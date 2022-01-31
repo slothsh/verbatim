@@ -1,0 +1,15 @@
+[submodule "third-party/fmt"]
+	path = third-party/fmt
+	url = https://github.com/fmtlib/fmt.git
+[submodule "third-party/Catch2"]
+	path = third-party/Catch2
+	url = https://github.com/catchorg/Catch2.git
+[submodule "third-party/cxxopts"]
+	path = third-party/cxxopts
+	url = https://github.com/jarro2783/cxxopts.git
+[submodule "third-party/libxmlplusplus"]
+	path = third-party/libxmlplusplus
+	url = https://github.com/libxmlplusplus/libxmlplusplus.git
+[submodule "third-party/magic_enum"]
+	path = third-party/magic_enum
+	url = https://github.com/Neargye/magic_enum.git
