@@ -7,6 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # Build Third-Party Dependencies
 add_subdirectory(third-party/fmt)
 add_subdirectory(third-party/Catch2)
+add_subdirectory(third-party/pugixml)
 
 # Include third-party headers
 include_directories(
@@ -14,6 +15,7 @@ include_directories(
     third-party/magic_enum/include
     third-party/cxxopts/include
     third-party/Catch2/src
+    third-party/pugixml/src
 )
     
 # Configure primary build for project
@@ -21,7 +23,7 @@ project(verbatim VERSION 0.0.1 LANGUAGES CXX)
 
 add_executable(helloverbatim)
 target_sources(helloverbatim PUBLIC src/helloverbatim.cxx)
-target_link_libraries(helloverbatim PRIVATE fmt)
+target_link_libraries(helloverbatim PRIVATE fmt pugixml)
 
 # Configure tests
 include(third-party/Catch2/extras/Catch.cmake)
