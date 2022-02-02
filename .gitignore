@@ -5,6 +5,7 @@
 build
 resources
 third-party
+output
 .vs
 .vscode
 

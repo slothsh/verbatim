@@ -7,9 +7,6 @@
 [submodule "third-party/cxxopts"]
 	path = third-party/cxxopts
 	url = https://github.com/jarro2783/cxxopts.git
-[submodule "third-party/libxmlplusplus"]
-	path = third-party/libxmlplusplus
-	url = https://github.com/libxmlplusplus/libxmlplusplus.git
 [submodule "third-party/magic_enum"]
 	path = third-party/magic_enum
 	url = https://github.com/Neargye/magic_enum.git
