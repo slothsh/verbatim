@@ -1,6 +1,8 @@
 # OSX
 .DS_Store
 
+
+
 # User Files
 build
 resources
@@ -8,6 +10,8 @@ third-party
 output
 .vs
 .vscode
+.clangd
+.neovim
 
 # Prerequisites
 *.d
