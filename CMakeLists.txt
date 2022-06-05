@@ -1,8 +1,19 @@
 cmake_minimum_required(VERSION 3.15.0)
+project(verbatim VERSION 0.0.1 LANGUAGES CXX)
+message(STATUS "Project source path: ${CMAKE_SOURCE_DIR}")
 
 # Global compiler configuration
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(COMPILE_WARNINGS "/W4")
+set(LINK_RUNTIME_LIB "/MT")
+
+# Comiler Warnings & Run time library
+if (MSVC)
+    message(STATUS "Setting compiler warnings to ${COMPILE_WARNINGS}")
+    message(STATUS "Linking MSVC run time library to ${LINK_RUNTIME_LIB}")
+    add_compile_options(${LINK_RUNTIME_LIB} ${COMPILE_WARNINGS})
+endif()
 
 # Build Third-Party Dependencies
 add_subdirectory(third-party/fmt)
@@ -16,19 +27,9 @@ include_directories(
     third-party/cxxopts/include
     third-party/Catch2/src
     third-party/pugixml/src
+    third-party/compile-time-regular-expressions
+    include
 )
-    
-# Configure primary build for project
-project(verbatim VERSION 0.0.1 LANGUAGES CXX)
-
-add_executable(helloverbatim)
-target_sources(helloverbatim PUBLIC src/helloverbatim.cxx)
-target_link_libraries(helloverbatim PRIVATE fmt pugixml)
 
 # Configure tests
-include(third-party/Catch2/extras/Catch.cmake)
-find_package(Catch2 3 REQUIRED)
-include(CTest)
-add_executable(testhelloverbatim tests/helloverbatim.test.cxx)
-target_link_libraries(testhelloverbatim PRIVATE Catch2::Catch2WithMain)
-catch_discover_tests(testhelloverbatim)
+add_subdirectory(tests)

@@ -1,0 +1,11 @@
+-std=c++2b
+-Wall
+-Werror
+-Wpedantic
+-I./include
+-I./third-party/fmt/include
+-I./third-party/magic_enum/include
+-I./third-party/compile-time-regular-expressions/include
+-I./third-party/cxxopts/src
+-I./third-party/Catch2/src
+-I./third-party/pugixml/src

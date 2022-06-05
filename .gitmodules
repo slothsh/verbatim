@@ -13,3 +13,6 @@
 [submodule "third-party/pugixml"]
 	path = third-party/pugixml
 	url = https://github.com/zeux/pugixml.git
+[submodule "third-party/compile-time-regular-expressions"]
+	path = third-party/compile-time-regular-expressions
+	url = https://github.com/hanickadot/compile-time-regular-expressions.git
