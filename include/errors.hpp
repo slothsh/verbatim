@@ -52,15 +52,16 @@ namespace vtm::errors
 #ifndef VTM_ERROR_MACROS
 #define VTM_ERROR_MACROS
 
-#define __diagmsg_prequit(program, signal) fmt::print(stderr,                                                                       \
-                                                      "\n{}: program exited with signal: {}\n"                                      \
-                                                      "DESCRIPTION: {}\n\n",                                                        \
-                                                      program, signal, vtm::errors::internal::signal_msg<std::string_view>(signal))
+#define __signal_msg(s) vtm::errors::internal::signal_msg<std::string_view>(s)
+#define __diagmsg_prequit(program, signal) fmt::print(stderr,                                  \
+                                                      "\n{}: program exited with signal: {}\n" \
+                                                      "DESCRIPTION: {}\n\n",                   \
+                                                      program, signal, __signal_msg(signal))
 
 #define __diagmsg_noquit(prefix, msg) (fmt::print(stderr, "{}: {}:({}): {}: {}\n", prefix, __FILE__, __LINE__, __func__, msg))
 
-#define __diagmsg_quit(prefix, msg) __diagmsg_noquit(prefix, msg); \
-                                    (std::exit(EXIT_FAILURE))
+#define __diagmsg_quit(prefix, msg, signal) __diagmsg_noquit(prefix, msg);    \
+                                            (std::exit(signal))
 
 #define __diagmsg_panic(msg) __diagmsg_noquit("FATAL", msg); \
                              (std::abort())
@@ -73,7 +74,7 @@ namespace vtm::errors
 #define VTM_ASSERT(expr, msg) __diagmsg_assert("FATAL", expr, msg)
 #define VTM_ERROR(msg)  __diagmsg_noquit("ERROR", msg)
 #define VTM_PANIC(msg)  __diagmsg_prequit("APPLICATION", vtm::errors::SIGNAL::FAIL_PANIC); __diagmsg_panic(msg)
-#define VTM_TODO(msg)   __diagmsg_prequit("APPLICATION", vtm::errors::SIGNAL::FAIL); __diagmsg_quit("TODO", msg)
+#define VTM_TODO(msg)   __diagmsg_prequit("APPLICATION", vtm::errors::SIGNAL::FAIL); __diagmsg_quit("TODO", msg, vtm::errors::SIGNAL::FAIL)
 #define VTM_WARN(msg)   __diagmsg_noquit("WARNING", msg)
 
 #endif

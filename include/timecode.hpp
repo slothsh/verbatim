@@ -31,6 +31,10 @@
 #define VTM_TIMECODE_PRECISION_MARGIN 0.0001
 #endif
 
+#ifndef VTM_TIMECODE_ROUNDING_PRECISION
+#define VTM_TIMECODE_ROUNDING_PRECISION 100000000
+#endif
+
 #ifndef VTM_TIMECODE_FPS_DEFAULT
 #define VTM_TIMECODE_FPS_DEFAULT 25
 #endif
@@ -64,7 +68,7 @@
                                                25,                                      \
                                                30,                                      \
                                                29,                                      \
-                                               29,                                      \
+                                               -29,                                     \
                                                60)
 
 #define __fpsformat_value_to_float(in) get_enum_mapping_1(__fpsformat_float(), in)
@@ -79,7 +83,7 @@
                                                  25.0,                                    \
                                                  30.0,                                    \
                                                  29.97,                                   \
-                                                 29.97,                                   \
+                                                 -29.97,                                  \
                                                  60.0)
 
 #define __fpsformat_value_to_dropframe(in) get_enum_mapping_1(__fpsformat_dropframe(), in)
@@ -122,7 +126,8 @@ namespace vtm::chrono
                                        { T::to_float(type) } -> std::floating_point;
                                        { T::to_string(type) } -> vtm::traits::StringLike;
                                    };
-        template<std::floating_point TFloat, std::integral TInt>
+
+        template<std::floating_point TFloat, std::integral TInt> // TODO: Constraint for Derived class
         struct __FPSFormat
         {
             enum format : TInt {
@@ -134,7 +139,8 @@ namespace vtm::chrono
                 fps_60,
                 none
             };
-
+            
+            using __my_type = __FPSFormat<TFloat, TInt>;
             using type = format;
             using float_type = TFloat;
             using int_type = TInt;
@@ -167,13 +173,13 @@ namespace vtm::chrono
             static constexpr std::integral
             auto to_int(const type& t)
             {
-                return __fpsformat_value_to_int(t);
+                return std::abs(__fpsformat_value_to_int(t));
             }
 
             static constexpr std::floating_point
             auto to_float(const type& t)
             {
-                return __fpsformat_value_to_float(t);
+                return std::abs(__fpsformat_value_to_float(t));
             }
 
             static constexpr vtm::traits::StringLike
@@ -182,6 +188,13 @@ namespace vtm::chrono
                 return __fpsformat_value_to_string(t);
             }
         };
+    }
+
+
+    template<std::floating_point F>
+    inline F tc_round(const F& f)
+    {
+        return std::round(f * VTM_TIMECODE_ROUNDING_PRECISION) / VTM_TIMECODE_ROUNDING_PRECISION;
     }
 
     // @SECTION: Timecode Functions
@@ -210,22 +223,25 @@ namespace vtm::chrono
     {
         VTM_ASSERT(fps > 0.0, "frame rate must be a non-zero floating point value");
         using float_t = T;
-        const float_t ht = fps_to_single_tick(fps) * 60.0 * 60.0 * fps;
-        const float_t mt = fps_to_single_tick(fps) * 60.0 * fps;
-        const float_t st = fps_to_single_tick(fps) * fps;
-        const float_t ft = fps_to_single_tick(fps);
+        const float_t ht = tc_round(fps_to_single_tick(fps) * 60.0 * 60.0 * fps);
+        const float_t mt = tc_round(fps_to_single_tick(fps) * 60.0 * fps);
+        const float_t st = tc_round(fps_to_single_tick(fps) * fps);
+        const float_t ft = tc_round(fps_to_single_tick(fps));
+        
+        
+
         return std::array{ht, mt, st, ft};
     }
 
     // TODO: integral version of fps_to_ticks_by_chunk()
-//
+
     template<vtm::traits::StringLike S, std::floating_point F>
     inline auto ticks_to_chunk_string(const F n, const F k, bool round = false) -> S
     {
         using float_t = F;
         using string_t = S;
         string_t str = "00";
-        float_t d = (round) ? std::round(n / k) : n / k;    
+        float_t d = (round) ? std::round(n / k) : n / k;
 
         if (d > n / k) return str;
         str = std::to_string(d);
@@ -237,7 +253,7 @@ namespace vtm::chrono
     // TODO: integral version of ticks_to_chunk_string()
 
     template<vtm::traits::StringLike S, std::floating_point F>
-    auto ticks_to_string(F n, const F fps) -> S
+    auto ticks_to_string(F n, const F fps, bool is_dropframe = false) -> S
     {
         VTM_ASSERT(fps > 0.0, "frame rate must be a non-zero floating point value");
 
@@ -250,7 +266,7 @@ namespace vtm::chrono
         string_t s = ticks_to_chunk_string<string_t>(n, st); n = std::fmod(n, st);
         string_t f = ticks_to_chunk_string<string_t>(n, ft, true);
 
-        return h + ":" + m + ":" + s + ":" + f;
+        return h + ":" + m + ":" + s + ((is_dropframe) ? ";" : ":") + f;
     }
 
     // TODO: integral version of ticks_to_string()
@@ -258,9 +274,10 @@ namespace vtm::chrono
     template<vtm::traits::StringLike S>
     inline auto is_tcstring_dropframe(const S& tc) -> bool
     {
-        for (const auto& c: tc) {
-            if (c == ';') return true;
-        }
+        const int msf_length = 9; // length (:mm:ss:ff) = 9
+        const int hours_length = tc.length() - msf_length;
+        
+        if (tc[hours_length + 6] == ';') return true;
 
         return false;
     }
@@ -399,7 +416,6 @@ namespace vtm::chrono
             using string_view_t = typename vtm::traits::__implicit_string_overloads<TString, TView>::string_view_type;
             using display_t     = string_view_t;
 
-        protected:
             BasicTimecode() = default;
             virtual ~BasicTimecode() noexcept = default;
             BasicTimecode(const BasicTimecode&) = delete;
@@ -415,13 +431,19 @@ namespace vtm::chrono
                  FpsFormatFactory TFps,
                  BasicTimecodeCompatible Interface = BasicTimecode<TString, TView>>
         class __BasicTimecode : public Interface
+                              , public vtm::traits::__convert_to_float<__BasicTimecode<TString, TView, TInt, TFloat, TFps, Interface>, TFloat>
+                              , public vtm::traits::__convert_to_signed<__BasicTimecode<TString, TView, TInt, TFloat, TFps, Interface>, TInt>
+                              , public vtm::traits::__convert_to_string<__BasicTimecode<TString, TView, TInt, TFloat, TFps, Interface>, TString>
+                              // TODO: vtm::traits::__convert_to_unsigned<...>
         {
         public:
+            using __my_type     = __BasicTimecode<TString, TView, TInt, TFloat, TFps, Interface>;
             using string_t      = typename Interface::string_t;
             using string_view_t = typename Interface::string_view_t;
             using display_t     = typename Interface::display_t;
-            using int_t         = std::remove_cvref_t<TInt>;
-            using float_t       = std::remove_cvref_t<TFloat>;
+            using signed_type   = typename vtm::traits::__convert_to_signed<__my_type, TInt>::signed_type;
+            using float_type    = typename vtm::traits::__convert_to_float<__my_type, TFloat>::float_type;
+            using string_type   = typename vtm::traits::__convert_to_string<__my_type, string_t>::string_type;
             using fps_factory_t = TFps;
             using fps_t         = typename TFps::type;
 
@@ -445,7 +467,7 @@ namespace vtm::chrono
                 VTM_ASSERT(f >= 0, "timecode frames must be greater than or equal zero");
 
                 return __BasicTimecode {
-                    chunks_to_total_ticks(std::make_tuple(float_t(h), float_t(m), float_t(s), float_t(f)),
+                    chunks_to_total_ticks(std::make_tuple(float_type(h), float_type(m), float_type(s), float_type(f)),
                                           __fpsformat_value_to_float(fps)),
                     fps
                 };
@@ -472,12 +494,11 @@ namespace vtm::chrono
             // Virtual methods
             void reset() noexcept
             {
-                this->set_value(float_t(0.0));
+                this->set_value(float_type(0.0));
             }
 
-            auto display() const noexcept -> display_t { return basic_timecode_default_display<display_t>(); }
-            operator string_t() const noexcept { return this->as_string(); }
-            operator string_view_t() const noexcept { return this->as_string(); }
+            auto display() const -> display_t { return basic_timecode_default_display<display_t>(); }
+            explicit operator string_view_t() const { return string_type(*this); } //TODO: Test that this doesn't stack overflow because of implicit type conversion
 
             __BasicTimecode() = default;
             ~__BasicTimecode() = default;
@@ -519,15 +540,13 @@ namespace vtm::chrono
 
             template<TimecodePrimitive V>
             explicit __BasicTimecode(const V value, const fps_t fps = fps_factory_t::default_value()) noexcept
-            {
-                this->set_value(value);
-                this->_fps = fps;
-            }
+                : _mode(mode::floating)
+                , _fps(fps)
+                , _value((std::is_floating_point_v<V>) ? value : static_cast<float_t>(value))
+            {}
 
             explicit constexpr __BasicTimecode(const string_view_t& tc)
-            {
-                
-            }
+            {}
 
         public:
             // Accessor methods
@@ -560,7 +579,6 @@ namespace vtm::chrono
             void set_fps(const fps_t fps) noexcept
             {
                 this->_fps = fps;
-                this->_dropframe = fps_factory_t::is_dropframe(fps);
             }
 
             auto fps() const noexcept -> fps_t
@@ -570,40 +588,43 @@ namespace vtm::chrono
 
             auto dropframe() const noexcept -> bool
             {
-                return this->_dropframe;
+                return fps_factory_t::is_drop_frame(this->_fps);
             }
 
-            std::signed_integral auto as_signed() const
+            operator signed_type() const
             {
-                int_t tmp = this->_value.i;
+                signed_type tmp = this->_value.i;
                 if (this->_mode != mode::integral) {
-                    tmp = static_cast<int_t>(std::round(this->_value.f));
+                    tmp = static_cast<signed_type>(std::round(this->_value.f));
                 }
 
                 return tmp;
             }
 
-            std::floating_point auto as_float() const
+            operator float_type() const
             {
-                float_t tmp = this->_value.f;
+                float_type tmp = this->_value.f;
                 if (this->_mode != mode::floating) {
-                    tmp = static_cast<float_t>(this->_value.i);
+                    tmp = static_cast<float_type>(this->_value.i);
                 }
 
                 return tmp;
             }
 
-            auto as_string() const -> string_t
+            operator string_type() const
+            /* auto as_string() const -> string_t */
             {
                 // TODO: implementation for integral ticks_to_string()
                 /* if (this->_mode == mode::integral) { */
                 /*     return ticks_to_string<string_t>(this->as_signed(), this->fps()); */
                 /* } */
 
-                return ticks_to_string<string_t>(this->as_float(), __fpsformat_value_to_float(this->fps()));
+                return ticks_to_string<string_t>(this->as_float(),
+                                                 fps_factory_t::to_float(this->_fps),
+                                                 fps_factory_t::is_drop_frame(this->_fps));
             }
 
-            template<typename L = float_t, typename R = string_t>
+            template<typename L = float_type, typename R = string_t>
             auto as_pair() const -> std::pair<L, R>
             {
                 return paired_members<L, R>::choose([this]() { return this->as_signed(); },
@@ -639,12 +660,12 @@ namespace vtm::chrono
                 __BasicTimecode tmp{ lhs };
 
                 if constexpr (std::is_floating_point_v<V>) {
-                    tmp.set_value(std::min(std::numeric_limits<float_t>::max(),
+                    tmp.set_value(std::min(std::numeric_limits<float_type>::max(),
                                   tmp._value.f + rhs));
                 }
 
                 else {
-                    tmp.set_value(std::min(std::numeric_limits<int_t>::max(),
+                    tmp.set_value(std::min(std::numeric_limits<signed_type>::max(),
                                   tmp._value.i + rhs));
                 }
 
@@ -673,12 +694,12 @@ namespace vtm::chrono
                 __BasicTimecode tmp{ lhs };
 
                 if constexpr (std::is_floating_point_v<V>) {
-                    tmp.set_value(std::max(std::numeric_limits<float_t>::min(),
+                    tmp.set_value(std::max(std::numeric_limits<float_type>::min(),
                                   tmp._value.f - rhs));
                 }
 
                 else {
-                    tmp.set_value(std::max(std::numeric_limits<int_t>::min(),
+                    tmp.set_value(std::max(std::numeric_limits<signed_type>::min(),
                                   tmp._value.i - rhs));
                 }
 
@@ -706,11 +727,11 @@ namespace vtm::chrono
                 __BasicTimecode tmp { lhs };
 
                 if (tmp._mode == mode::floating) {
-                    tmp.set_value(std::min(std::numeric_limits<float_t>::max(),
+                    tmp.set_value(std::min(std::numeric_limits<float_type>::max(),
                                   tmp._value.f + rhs._value.f));
                 }
 
-                tmp.set_value(std::min(std::numeric_limits<int_t>::max(),
+                tmp.set_value(std::min(std::numeric_limits<signed_type>::max(),
                               tmp._value.i + rhs._value.i));
 
                 return tmp;
@@ -721,11 +742,11 @@ namespace vtm::chrono
                 __BasicTimecode tmp { lhs };
 
                 if (tmp._mode == mode::floating) {
-                    tmp.set_value(std::max(std::numeric_limits<float_t>::min(),
+                    tmp.set_value(std::max(std::numeric_limits<float_type>::min(),
                                   tmp._value.f - rhs._value.f));
                 }
 
-                tmp.set_value(std::max(std::numeric_limits<int_t>::min(),
+                tmp.set_value(std::max(std::numeric_limits<signed_type>::min(),
                               tmp._value.i - rhs._value.i));
 
                 return tmp;
@@ -734,16 +755,16 @@ namespace vtm::chrono
             // Comparison operators
             bool operator==(const __BasicTimecode& rhs) const
             {
-                const auto [ tmp_i, tmp_f ] = this->as_pair<int_t, float_t>();
-                const auto [ rhs_tmp_i, rhs_tmp_f ] = rhs.as_pair<int_t, float_t>();
+                const auto [ tmp_i, tmp_f ] = this->as_pair<signed_type, float_type>();
+                const auto [ rhs_tmp_i, rhs_tmp_f ] = rhs.as_pair<signed_type, float_type>();
 
                 return tmp_i == rhs_tmp_i && tmp_f == rhs_tmp_f;
             }
 
             auto operator<=>(const __BasicTimecode& rhs) const
             {
-                const auto [ tmp_i, tmp_f ] = this->as_pair<int_t, float_t>();
-                const auto [ rhs_tmp_i, rhs_tmp_f ] = rhs.as_pair<int_t, float_t>();
+                const auto [ tmp_i, tmp_f ] = this->as_pair<signed_type, float_type>();
+                const auto [ rhs_tmp_i, rhs_tmp_f ] = rhs.as_pair<signed_type, float_type>();
 
                 std::strong_ordering int_ordering = tmp_i <=> rhs_tmp_i;
                 std::partial_ordering float_ordering = tmp_f <=> rhs_tmp_f;
@@ -756,14 +777,13 @@ namespace vtm::chrono
             // @SECTION __BasicTimecode Data Members
             mode _mode = mode::floating;
             fps_t _fps = fps_factory_t::default_value();
-            bool _dropframe = fps_factory_t::is_drop_frame(_fps);
             union {
-                float_t f = 0.0;
-                int_t i;
+                float_type f = 0.0;
+                signed_type i;
             } _value;
         };
     }
-    
+
     // @SECTION: Chrono Library Type Aliases
     using fps = internal::__FPSFormat<float64_t, int64_t>;
     using timecode = internal::__BasicTimecode<std::string,
@@ -777,8 +797,8 @@ namespace vtm
 {
     // @SECTION: VTM timecode object aliases
     using timecode = chrono::timecode;
-    using tcfloat_t = typename chrono::timecode::float_t;
-    using tcint_t = typename chrono::timecode::int_t;
+    using tcfloat_t = typename chrono::timecode::float_type;
+    using tcint_t = typename chrono::timecode::signed_type;
 
     // @SECTION: VTM FPS factory object aliases
     using fps = chrono::fps;

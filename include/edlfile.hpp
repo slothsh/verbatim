@@ -110,17 +110,17 @@ namespace vtm::edl
             virtual auto write_file(const string_view_t& path) const -> void = 0;
 
             // Default Interfaces
-            virtual auto display() const noexcept -> display_t
+            virtual auto display() const -> display_t
             {
                 return edl_file_default_display<display_t>();
             }
 
-            virtual operator string_t() const noexcept
+            virtual operator string_t() const
             {
                 return edl_file_default_display<string_t>();
             }
 
-            virtual operator string_view_t() const noexcept
+            virtual operator string_view_t() const
             {
                 return edl_file_default_display<string_view_t>();
             }

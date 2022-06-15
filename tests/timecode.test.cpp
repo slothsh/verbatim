@@ -122,10 +122,16 @@ TEST_CASE("vtm::timecode String Representations", "[timecode][chrono][string][co
 {
     vtm::timecode tc_1{0.0};
     const vtm::timecode tc_2{36.0};
+    const vtm::timecode tc_3_df{36.0, vtm::fps::fpsdf_29p97};
+    const vtm::timecode tc_4{36.0, vtm::fps::fps_30};
     INFO("tc_1 string: " << tc_1.as_string());
     INFO("tc_2 string: " << tc_2.as_string());
+    INFO("tc_3_df string: " << tc_3_df.as_string());
+    INFO("tc_4 string: " << tc_4.as_string());
     REQUIRE(tc_1.as_string() == "00:00:00:00");
     REQUIRE(tc_2.as_string() == "01:00:00:00");
+    REQUIRE(tc_3_df.as_string() == "01:00:00;00");
+    REQUIRE(tc_4.as_string() == "01:00:00:00");
 }
 
 TEST_CASE("vtm::timecode Drop Frame Representation", "[timecode][chrono]")

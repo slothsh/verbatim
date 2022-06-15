@@ -39,17 +39,24 @@ namespace vtm::traits
     };
 
     template<typename T>
-    concept NumericallyRepresentible = ConvertibleFrom<T, unsigned char, signed char,
-                                                          unsigned short, signed short,
-                                                          unsigned int, signed int,
-                                                          unsigned long, signed long,
-                                                          unsigned long long, signed long long>
-                                    && ConvertibleFrom<T, float, double, long double>
-                                    && requires {
-                                        std::floating_point<typename T::float_type>;
-                                        std::unsigned_integral<typename T::unsigned_type>;
-                                        std::signed_integral<typename T::signed_type>;
-                                    };
+    concept FloatConvertible = ConvertibleFrom<T, float, double, long double>;
+
+    template<typename T>
+    concept UintConvertible = ConvertibleFrom<T, unsigned char,
+                                                 unsigned short,
+                                                 unsigned int, 
+                                                 unsigned long,
+                                                 unsigned long>;
+
+    template<typename T>
+    concept IntConvertible = ConvertibleFrom<T, signed char,
+                                                signed short,
+                                                signed int, 
+                                                signed long,
+                                                signed long>;
+
+    template<typename T>
+    concept StringConvertible = ConvertibleFrom<T, std::string, std::string_view>; // TODO: Other locale types
 
     template<typename T, typename R, typename... Args>
     concept SymmetricallyInvocable = std::invocable<T, Args...>
@@ -71,7 +78,7 @@ namespace vtm::traits
     template<typename T, typename O>
     concept SameAsReturn = std::same_as<std::invoke_result_t<T>, O>;
 
-template<typename T>
+    template<typename T>
     concept StdStreamable = requires (T t) {
         { std::cout << t };
         { std::cerr << t };
@@ -197,7 +204,19 @@ template<typename T>
     struct __display
     {
         using type = std::remove_cvref_t<T>;
-        virtual auto display() const noexcept -> type = 0;
+        virtual auto display() const -> type = 0;
+    };
+
+    template<typename T, StringLike S> // TODO: Constrain T to convertible to S
+    struct __display_static
+    {
+        using type = T;
+        using reference = type&;
+        using display_type = S;
+        auto display() const -> display_type { return display_type(static_cast<reference>(*this)); }
+
+        __display_static() = default;
+        ~__display_static() = default;
     };
 
     template<Regular T>
@@ -207,7 +226,7 @@ template<typename T>
                                          T,
                                          std::remove_cvref_t<T> >;
 
-        virtual operator type() const noexcept = 0;
+        virtual operator type() const = 0;
     };
 
     template<Regular Arg, Regular Return>
@@ -226,20 +245,64 @@ template<typename T>
         using string_view_type = typename __implicit_type_overload<TView>::type;
     };
 
-    template<NumericallyRepresentible T>
-    struct __numerically_representible
+    template<FloatConvertible T, std::floating_point F>
+    struct __convert_to_float
     {
-        using type = T;
-        using float_type = typename type::float_type;
-        using unsigned_type = typename type::unsigned_type;
-        using signed_type = typename type::float_type;
+        using type = std::remove_cvref_t<T>;
+        using reference = type&;
+        using const_reference = std::add_const_t<type>&;
+        using float_type = std::remove_cvref_t<F>;
 
-        virtual auto as_float() const -> float_type = 0;
-        virtual auto as_unsigned() const -> unsigned_type = 0;
-        virtual auto as_signed() const -> signed_type = 0;
+        __convert_to_float() = default;
+        ~__convert_to_float() = default;
 
-    protected:
-        virtual ~__numerically_representible() = default;
+        auto as_float() -> float_type { return float_type(static_cast<reference>(*this)); };
+        auto as_float() const -> float_type { return float_type(static_cast<const_reference>(*this)); };
+    };
+
+    template<UintConvertible T, std::unsigned_integral U>
+    struct __convert_to_unsigned
+    {
+        using type = std::remove_cvref_t<T>;
+        using reference = type&;
+        using const_reference = std::add_const_t<type>&;
+        using unsigned_type = std::remove_cvref_t<U>;
+
+        __convert_to_unsigned() = default;
+        ~__convert_to_unsigned() = default;
+
+        auto as_unsigned() -> unsigned_type { return unsigned_type(static_cast<reference>(*this)); };
+        auto as_unsigned() const -> unsigned_type { return unsigned_type(static_cast<const_reference>(*this)); };
+    };
+
+    template<IntConvertible T, std::signed_integral I>
+    struct __convert_to_signed
+    {
+        using type = std::remove_cvref_t<T>;
+        using reference = type&;
+        using const_reference = std::add_const_t<type>&;
+        using signed_type = std::remove_cvref_t<I>;
+
+        __convert_to_signed() = default;
+        ~__convert_to_signed() = default;
+
+        auto as_signed() -> signed_type { return signed_type(static_cast<reference>(*this)); };
+        auto as_signed() const -> signed_type { return signed_type(static_cast<const_reference>(*this)); };
+    };
+
+    template<StringConvertible T, StringLike S>
+    struct __convert_to_string
+    {
+        using type = std::remove_cvref_t<T>;
+        using reference = type&;
+        using const_reference = std::add_const_t<type>&;
+        using string_type = std::remove_cvref_t<S>;
+
+        __convert_to_string() = default;
+        ~__convert_to_string() = default;
+
+        auto as_string() -> string_type { return string_type(static_cast<reference>(*this)); };
+        auto as_string() const -> string_type { return string_type(static_cast<const_reference>(*this)); };
     };
 
     // @SECTION INTERFACE CONTRAINTS
@@ -256,7 +319,7 @@ template<typename T>
 
     template<typename T>
     concept InterfaceDisplay = requires (T t) {
-        { t.display() } noexcept -> std::same_as<typename T::display_t>;
+        { t.display() } -> std::same_as<typename T::display_t>;
     };
 }
 

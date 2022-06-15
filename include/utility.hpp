@@ -31,6 +31,7 @@
 #define get_enum_mapping_1(M, I) std::get<0>(M)(I)
 #define get_enum_mapping_2(M, I) std::get<1>(M)(I)
 #define declare_enum_mapping(T1, T2, ...) vtm::utility::internal::enum_map<T1, T2>(__VA_ARGS__)
+#define declare_enum_mapping_bool(T1, T2, ...) vtm::utility::internal::enum_map<T1, T2>(__VA_ARGS__)
 
 #endif 
 
@@ -181,6 +182,13 @@ namespace vtm::utility
         return internal::to_string_view<callable_t,
                                         std::remove_cvref_t<TString>,
                                         std::remove_cvref_t<TView>   >(callable);
+    }
+
+    template<bool P, typename V>
+    consteval auto static_conditional_value(V True, V False)
+    {
+        if constexpr (P) return True;
+        else return False;
     }
 }
 
