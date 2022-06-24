@@ -190,16 +190,39 @@ namespace vtm::chrono
         };
     }
 
+    template<vtm::traits::StringLike S>
+    inline auto is_tcstring_dropframe(const S& tc) -> bool
+    {
+        VTM_ASSERT(tc.length() >= 11, "length of timecode string is not greater than or equal to 11");
+        const int msf_length = 9; // length (:mm:ss:ff) = 9
+        const int hours_length = tc.length() - msf_length;
+        
+        if (tc[hours_length + 6] == ';') return true;
+
+        return false;
+    }
+
+    template<vtm::traits::StringLike S = std::string>
+    inline auto get_tc_delimiter(const vtm::traits::StringLike auto& tc) -> S
+    {
+        return (is_tcstring_dropframe(tc)) ? ";" : ":";
+    }
+
+    template<vtm::traits::StringLike S = std::string>
+    inline auto get_tc_delimiter(bool is_dropframe) -> S
+    {
+        return (is_dropframe) ? ";" : ":";
+    }
 
     template<std::floating_point F>
-    inline F tc_round(const F& f)
+    inline F tc_round(const F f)
     {
         return std::round(f * VTM_TIMECODE_ROUNDING_PRECISION) / VTM_TIMECODE_ROUNDING_PRECISION;
     }
 
     // @SECTION: Timecode Functions
-    inline std::floating_point auto
-    fps_to_single_tick(const std::floating_point auto fps)
+    template<std::floating_point F>
+    inline F fps_to_single_tick(const F fps)
     {
         VTM_ASSERT(fps > 0.0, "Frame rate must be a non-zero floating point value");
         return 1.0 / fps / 100;
@@ -227,8 +250,6 @@ namespace vtm::chrono
         const float_t mt = tc_round(fps_to_single_tick(fps) * 60.0 * fps);
         const float_t st = tc_round(fps_to_single_tick(fps) * fps);
         const float_t ft = tc_round(fps_to_single_tick(fps));
-        
-        
 
         return std::array{ht, mt, st, ft};
     }
@@ -266,21 +287,10 @@ namespace vtm::chrono
         string_t s = ticks_to_chunk_string<string_t>(n, st); n = std::fmod(n, st);
         string_t f = ticks_to_chunk_string<string_t>(n, ft, true);
 
-        return h + ":" + m + ":" + s + ((is_dropframe) ? ";" : ":") + f;
+        return h + ":" + m + ":" + s + get_tc_delimiter(is_dropframe) + f;
     }
 
     // TODO: integral version of ticks_to_string()
-
-    template<vtm::traits::StringLike S>
-    inline auto is_tcstring_dropframe(const S& tc) -> bool
-    {
-        const int msf_length = 9; // length (:mm:ss:ff) = 9
-        const int hours_length = tc.length() - msf_length;
-        
-        if (tc[hours_length + 6] == ';') return true;
-
-        return false;
-    }
 
     template<vtm::traits::StringLike S>
     inline auto valid_tcstring(const S& tc) -> bool
@@ -291,7 +301,7 @@ namespace vtm::chrono
 
         std::size_t chunk_count = 0;
         std::array<std::size_t, 4> chunk_sizes{ 0, 2, 2, 2 };
-        const std::string_view delim = (is_tcstring_dropframe(tc)) ? ";" : ":";
+        const auto delim = get_tc_delimiter(tc);
 
         for (const auto& ch : rg::split_view(tc, delim)) {
             const std::string_view sv(ch.begin(), ch.end());
@@ -319,7 +329,7 @@ namespace vtm::chrono
 
         VTM_ASSERT(valid_tcstring(tc) == true, "invalid timecode string was parsed");
 
-        const std::string_view delim = (is_tcstring_dropframe(tc)) ? ";" : ":";
+        const auto delim = get_tc_delimiter(tc);
         const auto coefs = fps_to_ticks_by_chunk(fps);
         float_t ticks = 0.0;
 
