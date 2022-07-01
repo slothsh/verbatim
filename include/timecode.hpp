@@ -404,47 +404,31 @@ namespace vtm::chrono
                 }
             }
         };
-        
-        template<vtm::traits::StringLike TString, vtm::traits::StringLike TView>
-        class BasicTimecode : public vtm::traits::__reset,
-                              public vtm::traits::__implicit_string_overloads<TString, TView>,
-                              public vtm::traits::__display<typename vtm::traits::__implicit_string_overloads<TString, TView>::string_view_type>
-        {
-        public:
-            using string_t      = typename vtm::traits::__implicit_string_overloads<TString, TView>::string_type;
-            using string_view_t = typename vtm::traits::__implicit_string_overloads<TString, TView>::string_view_type;
-            using display_t     = string_view_t;
-
-            BasicTimecode() = default;
-            virtual ~BasicTimecode() noexcept = default;
-            BasicTimecode(const BasicTimecode&) = delete;
-            BasicTimecode(BasicTimecode&&) noexcept = delete;
-            BasicTimecode& operator=(const BasicTimecode&) = delete;
-            BasicTimecode& operator=(BasicTimecode&&) = delete;
-        };
 
         template<vtm::traits::StringLike TString,
                  vtm::traits::StringLike TView,
                  std::signed_integral TInt,
                  std::floating_point TFloat,
-                 FpsFormatFactory TFps,
-                 BasicTimecodeCompatible Interface = BasicTimecode<TString, TView>>
-        class __BasicTimecode : public Interface
-                              , public vtm::traits::__convert_to_float<__BasicTimecode<TString, TView, TInt, TFloat, TFps, Interface>, TFloat>
-                              , public vtm::traits::__convert_to_signed<__BasicTimecode<TString, TView, TInt, TFloat, TFps, Interface>, TInt>
-                              , public vtm::traits::__convert_to_string<__BasicTimecode<TString, TView, TInt, TFloat, TFps, Interface>, TString>
-                              // TODO: vtm::traits::__convert_to_unsigned<...>
+                 FpsFormatFactory TFps>
+        class __BasicTimecode : public vtm::traits::__reset
+                              , public vtm::traits::__implicit_string_overloads<TString, TView>
+                              , public vtm::traits::__display<typename vtm::traits::__implicit_string_overloads<TString, TView>::string_view_type>
+                              , public vtm::traits::__convert_to_float<__BasicTimecode<TString, TView, TInt, TFloat, TFps>, TFloat>
+                              , public vtm::traits::__convert_to_signed<__BasicTimecode<TString, TView, TInt, TFloat, TFps>, TInt>
+                              , public vtm::traits::__convert_to_string<__BasicTimecode<TString, TView, TInt, TFloat, TFps>, TString>
         {
         public:
-            using __my_type     = __BasicTimecode<TString, TView, TInt, TFloat, TFps, Interface>;
-            using string_t      = typename Interface::string_t;
-            using string_view_t = typename Interface::string_view_t;
-            using display_t     = typename Interface::display_t;
+            using __my_type     = __BasicTimecode<TString, TView, TInt, TFloat, TFps>;
+            using string_t      = typename vtm::traits::__implicit_string_overloads<TString, TView>::string_type;
+            using string_view_t = typename vtm::traits::__implicit_string_overloads<TString, TView>::string_view_type;
+            using display_t     = string_view_t;
             using signed_type   = typename vtm::traits::__convert_to_signed<__my_type, TInt>::signed_type;
             using float_type    = typename vtm::traits::__convert_to_float<__my_type, TFloat>::float_type;
             using string_type   = typename vtm::traits::__convert_to_string<__my_type, string_t>::string_type;
             using fps_factory_t = TFps;
             using fps_t         = typename TFps::type;
+            using __element1_type = float_t;
+            using __element2_type = fps_t;
 
             // Static members
             template<std::integral V>
@@ -682,6 +666,28 @@ namespace vtm::chrono
                 return std::partial_ordering::equivalent;
             }
 
+            // std::get overloads
+            template<std::size_t Index>
+            auto&& get()        & { return this->get_helper<Index>(*this); }
+
+            template<std::size_t Index>
+            auto&& get()       && { return this->get_helper<Index>(*this); }
+
+            template<std::size_t Index>
+            auto&& get()  const & { return this->get_helper<Index>(*this); }
+
+            template<std::size_t Index>
+            auto&& get() const && { return this->get_helper<Index>(*this); }
+
+        private:
+            template<std::size_t Index, typename T>
+            auto&& get_helper(T&& t) const
+            {
+                static_assert(Index < 2, "index out of bounds for __BasicTimecode");
+                if constexpr (Index == 0) return std::forward<T>(t)._value;
+                if constexpr (Index == 1) return std::forward<T>(t)._fps;
+            }
+
         private:
             // @SECTION __BasicTimecode Data Members
             float_type _value = 0.0;
@@ -711,6 +717,18 @@ namespace vtm
     using fpsint_t = typename chrono::fps::int_type;
 }
 
+namespace std
+{
+    // @SECTION: __BasicTimecode std::tuple specialization
+    template<>
+    struct tuple_size<vtm::timecode> : std::integral_constant<std::size_t, 2> {};
+
+    template<std::size_t Index>
+    struct tuple_element<Index, vtm::timecode>
+        : tuple_element<Index,
+                        tuple<typename vtm::timecode::__element1_type, typename vtm::timecode::__element2_type>>
+    {};
+}
 
 
 

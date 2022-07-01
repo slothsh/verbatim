@@ -134,6 +134,16 @@ TEST_CASE("vtm::timecode String Representations", "[timecode][chrono][string][co
     REQUIRE(tc_4.as_string() == "01:00:00:00");
 }
 
+TEST_CASE("vtm::timecode Structured Binding", "[timecode][chrono][structuredbinding][tuple][pair]")
+{
+    const vtm::timecode tc_1{36.0};
+    auto& [ value, fps ] = tc_1;
+    INFO("tc_1 value: " << value);
+    INFO("tc_1 fps: " << fps);
+    REQUIRE(value == 36.0);
+    REQUIRE(fps == 1);
+}
+
 TEST_CASE("vtm::timecode Drop Frame Representation", "[timecode][chrono]")
 {
     const vtm::timecode tc_1{0.0};
