@@ -1,0 +1,47 @@
+{
+    "global": {
+        "build_path": "${WORKSPACE}/build/cmake",
+        "test_path": "${WORKSPACE}/build/cmake/tests"
+    },
+
+    "cmake": {
+        "win32": {
+            "configure": {
+                "generator": "default",
+                "arch": "x64",
+                "flags": ["--no-warn-unused-cli"],
+                "toolset": [
+                    {
+                        "name": "host",
+                        "value": "x64"
+                    }
+                ],
+                "definitions": [
+                    {
+                        "name":"CMAKE_EXPORT_COMPILE_COMMANDS",
+                        "type": "BOOL",
+                        "value": true
+                    }
+                ]
+            },
+
+            "build_release": {
+                "flags": [
+                    {
+                        "name": "-j",
+                        "value": 14
+                    }
+                ]
+            },
+
+            "build_debug": {
+                "flags": [
+                    {
+                        "name": "-j",
+                        "value": 14
+                    }
+                ]
+            }
+        }
+    }
+}
