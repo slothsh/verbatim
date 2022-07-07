@@ -3,7 +3,12 @@ project(verbatim VERSION 0.0.1 LANGUAGES CXX)
 message(STATUS "Project source path: ${CMAKE_SOURCE_DIR}")
 
 # Global compiler configuration
-set(CMAKE_CXX_STANDARD 23)
+if (MSVC)
+    set(CMAKE_CXX_STANDARD 23)
+else()
+    set(CMAKE_CXX_STANDARD 20)
+endif()
+
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(COMPILE_WARNINGS "/W4")
 set(LINK_RUNTIME_LIB "/MT")

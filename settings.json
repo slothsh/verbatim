@@ -5,6 +5,51 @@
     },
 
     "cmake": {
+        "macosx": {
+            "configure": [
+                {
+                    "name": "default"
+                    "generator": "Ninja",
+                    "arch": "default",
+                    "flags": ["--no-warn-unused-cli"],
+                    "toolset": [],
+                    "definitions": [
+                        {
+                            "name":"CMAKE_EXPORT_COMPILE_COMMANDS",
+                            "type": "BOOL",
+                            "value": true
+                        }
+                    ]
+                }
+            ],
+
+            "build": [
+                {
+                    "name": "default",
+                    "type": "release",
+                    "target": "ALL_BUILD",
+                    "flags": [
+                        {
+                            "name": "-j",
+                            "value": 14
+                        }
+                    ]
+                },
+
+                {
+                    "name": "defaultd",
+                    "type": "debug",
+                    "target": "ALL_BUILD"
+                    "flags": [
+                        {
+                            "name": "-j",
+                            "value": 14
+                        }
+                    ]
+                }
+            ]
+        },
+
         "win32": {
             "configure": {
                 "generator": "default",
