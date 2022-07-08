@@ -8,7 +8,7 @@
         "macosx": {
             "configure": [
                 {
-                    "name": "default"
+                    "name": "default",
                     "generator": "Ninja",
                     "arch": "default",
                     "flags": ["--no-warn-unused-cli"],
@@ -39,7 +39,7 @@
                 {
                     "name": "defaultd",
                     "type": "debug",
-                    "target": "ALL_BUILD"
+                    "target": "ALL_BUILD",
                     "flags": [
                         {
                             "name": "-j",
@@ -51,26 +51,33 @@
         },
 
         "win32": {
-            "configure": {
-                "generator": "default",
-                "arch": "x64",
-                "flags": ["--no-warn-unused-cli"],
-                "toolset": [
-                    {
-                        "name": "host",
-                        "value": "x64"
-                    }
-                ],
-                "definitions": [
-                    {
-                        "name":"CMAKE_EXPORT_COMPILE_COMMANDS",
-                        "type": "BOOL",
-                        "value": true
-                    }
-                ]
-            },
+            "configure": [
+                {
+                    "name": "default",
+                    "generator": "default",
+                    "arch": "x64",
+                    "flags": ["--no-warn-unused-cli"],
+                    "toolset": [
+                        {
+                            "name": "host",
+                            "value": "x64"
+                        }
+                    ],
+                    "definitions": [
+                        {
+                            "name":"CMAKE_EXPORT_COMPILE_COMMANDS",
+                            "type": "BOOL",
+                            "value": true
+                        }
+                    ]
+                }
+            ]
+        },
 
-            "build_release": {
+        "build": [
+            {
+                "name": "default",
+                "type": "release",
                 "flags": [
                     {
                         "name": "-j",
@@ -79,7 +86,9 @@
                 ]
             },
 
-            "build_debug": {
+            {
+                "name": "defaultd",
+                "type": "debug",
                 "flags": [
                     {
                         "name": "-j",
@@ -87,6 +96,6 @@
                     }
                 ]
             }
-        }
+        ]
     }
 }
