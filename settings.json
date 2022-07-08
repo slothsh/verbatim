@@ -26,7 +26,7 @@
             "build": [
                 {
                     "name": "default",
-                    "type": "release",
+                    "type": "Release",
                     "target": "ALL_BUILD",
                     "flags": [
                         {
@@ -38,7 +38,7 @@
 
                 {
                     "name": "defaultd",
-                    "type": "debug",
+                    "type": "Debug",
                     "target": "ALL_BUILD",
                     "flags": [
                         {
@@ -71,31 +71,57 @@
                         }
                     ]
                 }
+            ],
+
+            "build": [
+                {
+                    "name": "default",
+                    "type": "Release",
+                    "target": "ALL_BUILD",
+                    "flags": [
+                        {
+                            "name": "-j",
+                            "value": 14
+                        }
+                    ]
+                },
+
+                {
+                    "name": "defaultd",
+                    "type": "Debug",
+                    "target": "ALL_BUILD",
+                    "flags": [
+                        {
+                            "name": "-j",
+                            "value": 14
+                        }
+                    ]
+                }
+            ],
+
+            "test": [
+                {
+                    "name": "default",
+                    "cfg": "Release",
+                    "action": "test",
+                    "flags": [
+                        {
+                            "name": "--output-on-failure"
+                        }
+                    ]
+                },
+
+                {
+                    "name": "defaultd",
+                    "cfg": "Debug",
+                    "action": "test",
+                    "flags": [
+                        {
+                            "name": "--output-on-failure"
+                        }
+                    ]
+                }
             ]
-        },
-
-        "build": [
-            {
-                "name": "default",
-                "type": "release",
-                "flags": [
-                    {
-                        "name": "-j",
-                        "value": 14
-                    }
-                ]
-            },
-
-            {
-                "name": "defaultd",
-                "type": "debug",
-                "flags": [
-                    {
-                        "name": "-j",
-                        "value": 14
-                    }
-                ]
-            }
-        ]
+        }
     }
 }
