@@ -26,7 +26,7 @@
             "build": [
                 {
                     "name": "default",
-                    "type": "Release",
+                    "type": "Debug",
                     "target": "ALL_BUILD",
                     "flags": [
                         {
@@ -37,8 +37,8 @@
                 },
 
                 {
-                    "name": "defaultd",
-                    "type": "Debug",
+                    "name": "defaultr",
+                    "type": "Release",
                     "target": "ALL_BUILD",
                     "flags": [
                         {
@@ -76,7 +76,7 @@
             "build": [
                 {
                     "name": "default",
-                    "type": "Release",
+                    "type": "Debug",
                     "target": "ALL_BUILD",
                     "flags": [
                         {
@@ -87,8 +87,8 @@
                 },
 
                 {
-                    "name": "defaultd",
-                    "type": "Debug",
+                    "name": "defaultr",
+                    "type": "Release",
                     "target": "ALL_BUILD",
                     "flags": [
                         {
@@ -102,8 +102,9 @@
             "test": [
                 {
                     "name": "default",
-                    "cfg": "Release",
+                    "cfg": "Debug",
                     "action": "test",
+                    "path": "${WORKSPACE}/build/cmake/test",
                     "flags": [
                         {
                             "name": "--output-on-failure"
@@ -112,8 +113,8 @@
                 },
 
                 {
-                    "name": "defaultd",
-                    "cfg": "Debug",
+                    "name": "defaultr",
+                    "cfg": "Release",
                     "action": "test",
                     "flags": [
                         {
