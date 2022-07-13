@@ -10,7 +10,6 @@
                 {
                     "name": "default",
                     "generator": "Ninja",
-                    "arch": "default",
                     "flags": ["--no-warn-unused-cli"],
                     "toolset": [],
                     "definitions": [
@@ -27,7 +26,6 @@
                 {
                     "name": "default",
                     "type": "Debug",
-                    "target": "ALL_BUILD",
                     "flags": [
                         {
                             "name": "-j",
@@ -39,11 +37,35 @@
                 {
                     "name": "defaultr",
                     "type": "Release",
-                    "target": "ALL_BUILD",
                     "flags": [
                         {
                             "name": "-j",
                             "value": 14
+                        }
+                    ]
+                }
+            ],
+
+            "test": [
+                {
+                    "name": "default",
+                    "cfg": "Debug",
+                    "action": "test",
+                    "path": "${WORKSPACE}/build/cmake/test",
+                    "flags": [
+                        {
+                            "name": "--output-on-failure"
+                        }
+                    ]
+                },
+
+                {
+                    "name": "defaultr",
+                    "cfg": "Release",
+                    "action": "test",
+                    "flags": [
+                        {
+                            "name": "--output-on-failure"
                         }
                     ]
                 }

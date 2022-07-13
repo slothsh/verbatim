@@ -117,7 +117,7 @@ def main():
         gen = cfg['generator']
         if (gen != 'default'): cmd += f' -G {gen}'
 
-        cmd += f' -A {cfg["arch"]}'
+        if ('arch' in cfg): cmd += f' -A {cfg["arch"]}'
         cmd += f' -B {cfg_path}'
         cmd += f' -S {cwd}'
 
@@ -143,8 +143,7 @@ def main():
         cmd += f' --config {build_cfg}'
 
         # Concat build target
-        target = build['target']
-        cmd += f' --target {target}'
+        if ('target' in build): cmd += f' --target {build["target"]}'
 
         # Concat flags
         flags = build['flags']
