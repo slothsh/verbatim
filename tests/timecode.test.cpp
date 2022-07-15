@@ -137,7 +137,7 @@ TEST_CASE("vtm::timecode String Representations", "[timecode][chrono][string][co
 TEST_CASE("vtm::timecode Structured Binding", "[timecode][chrono][structuredbinding][tuple][pair]")
 {
     const vtm::timecode tc_1{36.0};
-    auto& [ value, fps ] = tc_1;
+    const auto& [ value, fps ] = tc_1;
     INFO("tc_1 value: " << value);
     INFO("tc_1 fps: " << fps);
     REQUIRE(value == 36.0);
