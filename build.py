@@ -6,14 +6,17 @@ import argparse
 import json
 import re
 import shutil
-from glob import glob
 from termcolor import colored
+
 
 def get_cwd():
     return os.path.dirname(os.path.realpath(__file__)).replace('\\', '/')
 
+
 def is_build_path(path):
-    return re.search(f'{get_cwd()}/build/[A-z0-9\/\-\_]+$', path) != None
+    pattern = f'{get_cwd()}/build/[A-z0-9\\/\\-\\_]+$'
+    return re.search(pattern, path) is not None
+
 
 def replace_macro(raw_paths):
     paths = {}
@@ -21,10 +24,12 @@ def replace_macro(raw_paths):
         'WORKSPACE': os.path.dirname(os.path.realpath(__file__))
     }
     
-    for k1,v1 in raw_paths.items():
-        for k2,v2 in tokens.items():
+    for k1, v1 in raw_paths.items():
+        for k2, v2 in tokens.items():
             p = '\\$\\{' + k2 + '\\}'
-            paths[k1] = re.sub(string=v1, pattern=p, repl=v2.replace('\\', '/'))
+            paths[k1] = re.sub(string=v1,
+                               pattern=p,
+                               repl=v2.replace('\\', '/'))
 
     return paths
 
@@ -75,7 +80,7 @@ def main():
 
         if (len(build_entries) == 1 and 'path' in build_entries[0]):
             raw_path = {'path': build_entries[0]['path']}
-            clean_path =  replace_macro(raw_path)['path']
+            clean_path = replace_macro(raw_path)['path']
 
         if (is_build_path(clean_path) and os.path.isdir(clean_path)):
             print(colored(f'cleaning up items in directory: {clean_path}', 'yellow'))
@@ -95,7 +100,7 @@ def main():
 
         if ('path' in cfg):
             raw_path = {'path': cfg['path']}
-            cfg_path =  replace_macro(raw_path)['path']
+            cfg_path = replace_macro(raw_path)['path']
 
         flags = cfg['flags']
         for f in flags:
@@ -115,14 +120,16 @@ def main():
             cmd += f' -T {n}={v}'
 
         gen = cfg['generator']
-        if (gen != 'default'): cmd += f' -G {gen}'
+        if (gen != 'default'):
+            cmd += f' -G {gen}'
 
-        if ('arch' in cfg): cmd += f' -A {cfg["arch"]}'
+        if ('arch' in cfg):
+            cmd += f' -A {cfg["arch"]}'
         cmd += f' -B {cfg_path}'
         cmd += f' -S {cwd}'
 
         print(colored(f'executing expression: {cmd}', 'yellow'))
-        cfg_success = bool(os.system(cmd))
+        os.system(cmd)
 
     if (len(build_entries) > 1):
         raise f'duplicate build in {args.settings} items with name {args.build}'
@@ -134,7 +141,7 @@ def main():
         build_path = paths['build_path']
         if ('path' in build):
             raw_path = {'path': build['path']}
-            build_path =  replace_macro(raw_path)['path']
+            build_path = replace_macro(raw_path)['path']
 
         cmd += f' --build {build_path}'
 
@@ -143,7 +150,8 @@ def main():
         cmd += f' --config {build_cfg}'
 
         # Concat build target
-        if ('target' in build): cmd += f' --target {build["target"]}'
+        if ('target' in build):
+            cmd += f' --target {build["target"]}'
 
         # Concat flags
         flags = build['flags']
@@ -155,7 +163,7 @@ def main():
 
         print(colored(f'executing expression: {cmd}', 'yellow'))
         os.system(cmd)
-        build_success = bool(os.system(cmd))
+        os.system(cmd)
 
     if (len(test_entries) > 1):
         raise f'duplicate test in {args.settings} items with name {args.test}'
@@ -174,7 +182,7 @@ def main():
         cmd += f' -T {test["action"]}'
 
         for f in test['flags']:
-            if (not 'value' in f.keys()):
+            if ('value' not in f.keys()):
                 cmd += f' {f["name"]}'
             else:
                 cmd += f' {f["name"]} {f["value"]}'
@@ -183,6 +191,7 @@ def main():
 
         print(colored(f'executing expression: {cmd}', 'yellow'))
         os.system(cmd)
+
 
 if __name__ == '__main__':
     main()
