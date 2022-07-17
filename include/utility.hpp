@@ -204,6 +204,20 @@ consteval auto static_conditional_value(V True, V False)
     else return False;
 }
 
+template<std::integral T>
+constexpr auto factorial(T t) -> T
+{
+    if (t <= 1) return t;
+    return t * factorial(t - 1);
+}
+
+template<std::integral T, std::invocable<T> F, T... Ns>
+constexpr auto map_integer_sequence(F f,
+                                    std::integer_sequence<T, Ns...> seq)
+{
+    return std::integer_sequence<T, f(Ns)...>{};
+}
+
 } // @END OF namespace vtm::utility
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -1,7 +1,7 @@
 // Copyright (C) Stefan Olivier
 // <https://stefanolivier.com>
 // ----------------------------
-// Description: Timecode configuration and constants
+// Description: Timecode library object
 
 #pragma once
 
@@ -378,6 +378,12 @@ concept BasicTimecodeCompatible = BasicTimecodeStringAliases<T>
                                   typename T::display_t;
                                };
 
+template<typename T1, typename T2>
+consteval auto swap_types(T1 f1, T2 f2) -> std::tuple<T2, T1>
+{
+    return std::make_tuple(f2, f1);
+}
+
 template<typename... Ts, std::invocable... Fs>
 consteval auto match_type_pattern(std::tuple<Ts...> ts, std::tuple<Fs...> fs)
 {
@@ -603,7 +609,7 @@ public:
 
 ///////////////////////////////////////////////////////////////////////////
 //
-//           -- @SECTION Accessors & Mutator --
+//           -- @SECTION Accessors & Mutators --
 //
 ///////////////////////////////////////////////////////////////////////////
 
