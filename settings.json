@@ -90,6 +90,30 @@
                             "name":"CMAKE_EXPORT_COMPILE_COMMANDS",
                             "type": "BOOL",
                             "value": true
+                        },
+                        {
+                            "name": "VCPKG_TARGET_TRIPLET",
+                            "type": "STRING",
+                            "value":"x64-windows-static"
+                        }
+                    ]
+                },
+                {
+                    "name": "clang",
+                    "generator": "Ninja",
+                    "path": "${WORKSPACE}/build/cmake-clang",
+                    "flags": ["--no-warn-unused-cli"],
+                    "toolset": [],
+                    "definitions": [
+                        {
+                            "name":"CMAKE_EXPORT_COMPILE_COMMANDS",
+                            "type": "BOOL",
+                            "value": true
+                        },
+                        {
+                            "name": "VCPKG_TARGET_TRIPLET",
+                            "type": "STRING",
+                            "value":"x64-windows-static"
                         }
                     ]
                 }

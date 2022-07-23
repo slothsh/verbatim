@@ -2,10 +2,12 @@
 .DS_Store
 
 # User Files
+compile_commands.json
 build
 resources
 third-party
 output
+.cache
 .vs
 .vscode
 .clangd

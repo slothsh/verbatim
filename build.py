@@ -38,7 +38,7 @@ def main():
     parser = argparse.ArgumentParser(description='Build Script for Verbatim')
     parser.add_argument('actions', type=str, nargs='+', default='build test',
                         help='which actions to perform')
-    parser.add_argument('--cfg', metavar='str', type=str, nargs='*', default='default',
+    parser.add_argument('--cfg', metavar='str', type=str, nargs=1, default='default',
                         help='which configure command to execute, specified in compile settings.json')
     parser.add_argument('--build', metavar='str', type=str, nargs='?', default='default',
                         help='which build command to execute, specified in compile settings.json')
@@ -71,7 +71,7 @@ def main():
     cfg_success = False
     build_success = False
 
-    cfg_entries = [x for x in cmake_cfg if x['name'] == args.cfg]
+    cfg_entries = [x for x in cmake_cfg if x['name'] == args.cfg[0]]
     build_entries = [x for x in cmake_build if x['name'] == args.build]
     test_entries = [x for x in cmake_test if x['name'] == args.test]
 

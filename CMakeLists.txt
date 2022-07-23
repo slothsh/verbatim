@@ -3,36 +3,33 @@ project(verbatim VERSION 0.0.1 LANGUAGES CXX)
 message(STATUS "Project source path: ${CMAKE_SOURCE_DIR}")
 
 # Global compiler configuration
-if (MSVC)
-    set(CMAKE_CXX_STANDARD 23)
-else()
-    set(CMAKE_CXX_STANDARD 20)
-endif()
-
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(COMPILE_WARNINGS "/W4")
-set(LINK_RUNTIME_LIB "/MT")
+if (APPLE)
+    set(CMAKE_CXX_STANDARD 20)
+else()
+    set(CMAKE_CXX_STANDARD 23)
+endif()
 
 # Comiler Warnings & Run time library
 if (MSVC)
-    message(STATUS "Setting compiler warnings to ${COMPILE_WARNINGS}")
-    message(STATUS "Linking MSVC run time library to ${LINK_RUNTIME_LIB}")
+    set(COMPILE_WARNINGS "/W4")
+    set(LINK_RUNTIME_LIB "/MT")
+    set(LINK_RUNTIME_EXCEPTIONS "/EHsc")
+    add_compile_options(${LINK_RUNTIME_LIB} ${COMPILE_WARNINGS} ${LINK_RUNTIME_EXCEPTIONS})
+else()
+    set(COMPILE_WARNINGS "-Wall -Wpedantic")
     add_compile_options(${LINK_RUNTIME_LIB} ${COMPILE_WARNINGS})
 endif()
 
-# Build Third-Party Dependencies
-add_subdirectory(third-party/fmt)
-add_subdirectory(third-party/Catch2)
-add_subdirectory(third-party/pugixml)
+message(STATUS "Setting compiler warnings to ${COMPILE_WARNINGS}")
+message(STATUS "Linking MSVC run time library to ${LINK_RUNTIME_LIB}")
 
-# Include third-party headers
+# Build Third-Party Dependencies via vcpkg
+find_package(fmt REQUIRED)
+
+# Include local and third-party headers
 include_directories(
-    third-party/fmt/include
     third-party/magic_enum/include
-    third-party/cxxopts/include
-    third-party/Catch2/src
-    third-party/pugixml/src
-    third-party/compile-time-regular-expressions
     include
 )
 

@@ -1,3 +1,4 @@
+#define CATCH_CONFIG_MAIN
 #include <Catch2/catch_all.hpp>
 #include "edlfile.hpp"
 

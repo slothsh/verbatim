@@ -1,0 +1,11 @@
+{
+    "name": "verbatim",
+    "version-string": "0.0.1",
+    "dependencies": [
+        "fmt",
+        {
+            "name": "catch2",
+            "platform": "windows & static"
+        }
+    ]
+}

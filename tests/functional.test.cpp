@@ -1,4 +1,4 @@
-
+#define CATCH_CONFIG_MAIN
 #include <tuple>
 #include <utility>
 #include <Catch2/catch_all.hpp>
@@ -138,10 +138,11 @@ TEST_CASE("vtm::functional swap()", "[functional][generic][constexpr][tuple][rot
     SECTION("swap back and forth with swap()")
     {
         using namespace vtm::functional;
-        constexpr std::tuple t1{ 1, 2, 3, 4, 5 };
+        constexpr std::tuple t1_long{ 1, 2, 3, 4, 5 };
+        constexpr std::tuple t1_short{ 1, 2 };
 
         {
-            constexpr auto t2 = swap(t1);
+            constexpr auto t2 = swap(t1_long);
             constexpr auto t3 = swap(t2);
 
             INFO("swap on t2: " << AT(t2, 0)); INFO("swap on t2: " << AT(t2, 1));
@@ -160,5 +161,35 @@ TEST_CASE("vtm::functional swap()", "[functional][generic][constexpr][tuple][rot
             REQUIRE(AT(t3, 2) == 3); REQUIRE(AT(t3, 3) == 4);
             REQUIRE(AT(t3, 4) == 5);
         }
+
+        {
+            constexpr auto t2 = swap(t1_short);
+            constexpr auto t3 = swap(t2);
+
+            INFO("swap on t2: " << AT(t2, 0)); INFO("swap on t2: " << AT(t2, 1));
+            INFO("swap on t3: " << AT(t3, 0)); INFO("swap on t3: " << AT(t3, 1));
+            REQUIRE(AT(t2, 0) == 2); REQUIRE(AT(t2, 1) == 1);
+            REQUIRE(AT(t3, 0) == 1); REQUIRE(AT(t3, 1) == 2);
+        }
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+TEST_CASE("vtm::functional append()", "[functional][generic][constexpr][tuple][rotl]")
+{
+    using namespace vtm::functional;
+    constexpr std::tuple t1_long{ 1, 2, 3, 4 };
+
+    {
+        constexpr auto t2 = append(t1_long, 5);
+
+        INFO("append on t2: " << AT(t2, 0)); INFO("append on t2: " << AT(t2, 1));
+        INFO("append on t2: " << AT(t2, 2)); INFO("append on t2: " << AT(t2, 3));
+        INFO("append on t2: " << AT(t2, 4));
+
+        REQUIRE(AT(t2, 0) == 1); REQUIRE(AT(t2, 1) == 2);
+        REQUIRE(AT(t2, 2) == 3); REQUIRE(AT(t2, 3) == 4);
+        REQUIRE(AT(t2, 4) == 5);
     }
 }
