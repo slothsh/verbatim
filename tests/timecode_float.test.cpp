@@ -7,11 +7,11 @@
 #include <string>
 #include <string_view>
 
-TEST_CASE("vtm::timecode Initialization", "[timecode][chrono][initialization]")
+TEST_CASE("vtm::f64timecode Initialization", "[timecode][chrono][initialization]")
 {
     // Regular ctors
-    const vtm::timecode tc_1{};
-    const vtm::timecode tc_2{3.33};
+    const vtm::f64timecode tc_1{};
+    const vtm::f64timecode tc_2{3.33};
 
     INFO("tc_1 signed: " << tc_1.as_signed());
     INFO("tc_2 signed: " << tc_2.as_signed());
@@ -26,15 +26,15 @@ TEST_CASE("vtm::timecode Initialization", "[timecode][chrono][initialization]")
     REQUIRE_FALSE(tc_2.as_float() == 3.34);
 }
 
-TEST_CASE("vtm::timecode Static Factory Functions", "[timecode][chrono][static][factory]")
+TEST_CASE("vtm::f64timecode Static Factory Functions", "[timecode][chrono][static][factory]")
 {
-    auto tc_1 = vtm::timecode::from_hmsf(0, 0, 0, 0, vtm::fps::fps_24);
-    auto tc_2 = vtm::timecode::from_hmsf(0, 0, 0, 0, vtm::fps::fps_25);
-    auto tc_3 = vtm::timecode::from_hmsf(0, 0, 0, 0, vtm::fps::fps_30);
+    auto tc_1 = vtm::f64timecode::from_hmsf(0, 0, 0, 0, vtm::fps::fps_24);
+    auto tc_2 = vtm::f64timecode::from_hmsf(0, 0, 0, 0, vtm::fps::fps_25);
+    auto tc_3 = vtm::f64timecode::from_hmsf(0, 0, 0, 0, vtm::fps::fps_30);
 
-    auto tc_4 = vtm::timecode::from_string("00:00:01:00");
-    auto tc_5 = vtm::timecode::from_string(std::string("00:00:01:00"));
-    auto tc_6 = vtm::timecode::from_string(std::string_view("00:00:01:00"));
+    auto tc_4 = vtm::f64timecode::from_string("00:00:01:00");
+    auto tc_5 = vtm::f64timecode::from_string(std::string("00:00:01:00"));
+    auto tc_6 = vtm::f64timecode::from_string(std::string_view("00:00:01:00"));
 
     INFO("tc_1 string: " << tc_1.as_string());
     INFO("tc_2 string: " << tc_2.as_string());
@@ -52,10 +52,10 @@ TEST_CASE("vtm::timecode Static Factory Functions", "[timecode][chrono][static][
 }
 
 
-TEST_CASE("vtm::timecode Assignment", "[timecode][chrono][operators]")
+TEST_CASE("vtm::f64timecode Assignment", "[timecode][chrono][operators]")
 {
-    vtm::timecode tc_1{100.3323};
-    vtm::timecode tc_2{998};
+    vtm::f64timecode tc_1{100.3323};
+    vtm::f64timecode tc_2{998};
 
     INFO("tc_1 signed: " << tc_1.as_signed());
     INFO("tc_2 signed: " << tc_2.as_signed());
@@ -82,10 +82,10 @@ TEST_CASE("vtm::timecode Assignment", "[timecode][chrono][operators]")
     REQUIRE_FALSE(tc_2.as_float() == 420.421);
 }
 
-TEST_CASE("vtm::timecode Comparison", "[timecode][chrono][operators]")
+TEST_CASE("vtm::f64timecode Comparison", "[timecode][chrono][operators]")
 {
-    vtm::timecode tc_1{690420ll};
-    const vtm::timecode tc_2{690420l};
+    vtm::f64timecode tc_1{690420ll};
+    const vtm::f64timecode tc_2{690420l};
 
     INFO("Equality Section");
     INFO("tc_1 signed: " << tc_1.as_signed());
@@ -119,12 +119,12 @@ TEST_CASE("vtm::timecode Comparison", "[timecode][chrono][operators]")
     REQUIRE_FALSE(tc_2 <= tc_1);
 }
 
-TEST_CASE("vtm::timecode String Representations", "[timecode][chrono][string][conversion]")
+TEST_CASE("vtm::f64timecode String Representations", "[timecode][chrono][string][conversion]")
 {
-    vtm::timecode tc_1{0.0};
-    const vtm::timecode tc_2{36.0};
-    const vtm::timecode tc_3_df{36.0, vtm::fps::fpsdf_29p97};
-    const vtm::timecode tc_4{36.0, vtm::fps::fps_30};
+    vtm::f64timecode tc_1{0.0};
+    const vtm::f64timecode tc_2{36.0};
+    const vtm::f64timecode tc_3_df{36.0, vtm::fps::fpsdf_29p97};
+    const vtm::f64timecode tc_4{36.0, vtm::fps::fps_30};
     INFO("tc_1 string: " << tc_1.as_string());
     INFO("tc_2 string: " << tc_2.as_string());
     INFO("tc_3_df string: " << tc_3_df.as_string());
@@ -135,9 +135,9 @@ TEST_CASE("vtm::timecode String Representations", "[timecode][chrono][string][co
     REQUIRE(tc_4.as_string() == "01:00:00:00");
 }
 
-TEST_CASE("vtm::timecode Structured Binding", "[timecode][chrono][structuredbinding][tuple][pair]")
+TEST_CASE("vtm::f64timecode Structured Binding", "[timecode][chrono][structuredbinding][tuple][pair]")
 {
-    const vtm::timecode tc_1{36.0};
+    const vtm::f64timecode tc_1{36.0};
     const auto& [ value, fps ] = tc_1;
     INFO("tc_1 value: " << value);
     INFO("tc_1 fps: " << fps);
@@ -145,9 +145,9 @@ TEST_CASE("vtm::timecode Structured Binding", "[timecode][chrono][structuredbind
     REQUIRE(fps == 1);
 }
 
-TEST_CASE("vtm::timecode Drop Frame Representation", "[timecode][chrono]")
+TEST_CASE("vtm::f64timecode Drop Frame Representation", "[timecode][chrono]")
 {
-    const vtm::timecode tc_1{0.0};
+    const vtm::f64timecode tc_1{0.0};
     REQUIRE(true == true);
 }
 

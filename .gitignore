@@ -3,6 +3,7 @@
 
 # User Files
 compile_commands.json
+vcpkg_*
 build
 resources
 third-party

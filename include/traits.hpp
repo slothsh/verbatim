@@ -166,6 +166,9 @@ template<typename T>
 inline constexpr bool string_char_type_v = string_char_type_members<T, T>::value;
 
 template<typename T>
+concept StringCharType = string_char_type_v<T>;
+
+template<typename T>
 using string_char_type_t = typename string_char_type_members<T, T>::type;
 
 template<typename...>

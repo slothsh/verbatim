@@ -1,7 +1,14 @@
 {
     "global": {
+        "build_root": "${WORKSPACE}/build",
         "build_path": "${WORKSPACE}/build/cmake",
         "test_path": "${WORKSPACE}/build/cmake/tests"
+    },
+
+    "clang_commands": {
+        "configurations": [
+            "default"
+        ]
     },
 
     "cmake": {
@@ -97,25 +104,6 @@
                             "value":"x64-windows-static"
                         }
                     ]
-                },
-                {
-                    "name": "clang",
-                    "generator": "Ninja",
-                    "path": "${WORKSPACE}/build/cmake-clang",
-                    "flags": ["--no-warn-unused-cli"],
-                    "toolset": [],
-                    "definitions": [
-                        {
-                            "name":"CMAKE_EXPORT_COMPILE_COMMANDS",
-                            "type": "BOOL",
-                            "value": true
-                        },
-                        {
-                            "name": "VCPKG_TARGET_TRIPLET",
-                            "type": "STRING",
-                            "value":"x64-windows-static"
-                        }
-                    ]
                 }
             ],
 
@@ -124,6 +112,7 @@
                     "name": "default",
                     "type": "Debug",
                     "target": "ALL_BUILD",
+                    "path": "${WORKSPACE}/build/cmake",
                     "flags": [
                         {
                             "name": "-j",
@@ -136,6 +125,19 @@
                     "name": "defaultr",
                     "type": "Release",
                     "target": "ALL_BUILD",
+                    "path": "${WORKSPACE}/build/cmake",
+                    "flags": [
+                        {
+                            "name": "-j",
+                            "value": 14
+                        }
+                    ]
+                },
+                {
+                    "name": "clang",
+                    "type": "Release",
+                    "target": "ALL_BUILD",
+                    "path": "${WORKSPACE}/build/cmake-clang",
                     "flags": [
                         {
                             "name": "-j",
@@ -162,6 +164,7 @@
                     "name": "defaultr",
                     "cfg": "Release",
                     "action": "test",
+                    "path": "${WORKSPACE}/build/cmake/test",
                     "flags": [
                         {
                             "name": "--output-on-failure"

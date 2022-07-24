@@ -48,6 +48,8 @@ def main():
                         help='cmake build target, default="ALL_BUILD"')
     parser.add_argument('--settings', metavar='str', type=str, nargs='?', default='./settings.json',
                         help='location of project configuration file. default="./settings.json"')
+    parser.add_argument('--disable-export-commands', action='store_true',
+                        help='disable generation of CMAKE_EXPORT_COMPILE_COMMANDS')
     args = parser.parse_args()
 
     # Paths
@@ -96,7 +98,8 @@ def main():
     elif (len(cfg_entries) == 1 and 'cfg' in args.actions):
         cmd = 'cmake'
         cfg = cfg_entries[0]
-        cfg_path = paths['build_path']
+        cfg_root_path = os.path.abspath(paths['build_root'])
+        cfg_path = os.path.abspath(paths['build_path'])
 
         if ('path' in cfg):
             raw_path = {'path': cfg['path']}
@@ -107,11 +110,13 @@ def main():
             cmd += f' {f}'
 
         defs = cfg['definitions']
+        built_definitions = ''
         for d in defs:
             n = d['name']
             t = d['type']
             v = d['value']
-            cmd += f' -D{n}:{t}={v}'
+            built_definitions += f' -D{n}:{t}={v}'
+        cmd += built_definitions
 
         toolset = cfg['toolset']
         for t in toolset:
@@ -128,8 +133,24 @@ def main():
         cmd += f' -B {cfg_path}'
         cmd += f' -S {cwd}'
 
-        print(colored(f'executing expression: {cmd}', 'yellow'))
-        os.system(cmd)
+        print(colored(f'executing configuration expression: {cmd}', 'yellow'))
+        cfg_success = os.system(cmd)
+
+        if (cfg_success == 0 and args.disable_export_commands is False and system == 'win32'):
+            exports_path = cfg_root_path + '/cmake-clang-exports'
+            exports_cmd = f'cmake -G Ninja -S {cwd} -B {exports_path} {built_definitions.strip().replace("x64", "x86")}'
+            print(colored(f'executing configuration expression: {exports_cmd}', 'yellow'))
+            exports_success = os.system(exports_cmd)
+
+            if (exports_success == 0):
+                try:
+                    if (os.path.isfile(f'{cwd}/compile_commands.json')):
+                        os.remove(f'{cwd}/compile.commands.json')
+
+                    exports_cp_path = shutil.copyfile(f'{exports_path}/compile_commands.json', cwd)
+                except Exception as e:
+                    print(colored(e, 'red'))
+
 
     if (len(build_entries) > 1):
         raise f'duplicate build in {args.settings} items with name {args.build}'
@@ -162,7 +183,6 @@ def main():
         cmd += " --"
 
         print(colored(f'executing expression: {cmd}', 'yellow'))
-        os.system(cmd)
         os.system(cmd)
 
     if (len(test_entries) > 1):

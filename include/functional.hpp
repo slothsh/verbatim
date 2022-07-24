@@ -10,6 +10,7 @@
 // Standard headers
 #include <cstdint>
 #include <concepts>
+#include <ranges>
 #include <tuple>
 #include <type_traits>
 #include <utility>
@@ -57,29 +58,37 @@ constexpr auto swap_impl(std::tuple<Ts...> ts,
                          std::index_sequence<Ns...> seq)
 {
     static_assert(sizeof...(Ts) >= 2, "size of tuple must be 2 or greater");
-
-    if constexpr (sizeof...(Ts) == 2) {
-        return std::tuple { std::get<1>(ts), std::get<0>(ts) };
-    }
-
-    else {
-        return std::tuple{ std::get<1>(ts), std::get<0>(ts), std::get<Ns>(ts)... };
-    }
+    return std::tuple{ std::get<Ns>(ts)... };
 }
 
 } // @END OF namespace vtm::functional::internal
 
-template<typename... Ts>
+template<std::size_t I = 0, typename... Ts, std::size_t Size = sizeof...(Ts)>
 constexpr auto swap(std::tuple<Ts...> ts)
 {
     static_assert(sizeof...(Ts) >= 2, "size of tuple must be 2 or greater");
+    static_assert(I < sizeof...(Ts), "swap index must be less than total size of tuple");
 
-    constexpr std::size_t size_ts = (sizeof...(Ts) > 2) ? sizeof...(Ts) - 2 : 2;
-    constexpr auto seq = vtm::utility::map_integer_sequence(
-        [](std::size_t i) { return i + 2; },
-        std::make_integer_sequence<std::size_t, size_ts>{}
-    );
+    constexpr auto mapping = [](std::size_t seq_i) {
+        if (seq_i == 0 && I == Size - 1) {
+            return Size - 1;
+        }
 
+        if (seq_i == I) {
+            if (seq_i == Size - 1) return std::size_t{0};
+            return seq_i + 1;
+        }
+
+        if (seq_i == I + 1) {
+            if (seq_i == Size) return Size - 1;
+            return seq_i - 1;
+        }
+
+        return seq_i;
+    };
+
+    constexpr auto seq = vtm::utility::map_integer_sequence(mapping,
+                                                            std::make_integer_sequence<std::size_t, Size>{});
     return internal::swap_impl(std::forward<decltype(ts)>(ts), seq);
 }
 
@@ -179,7 +188,7 @@ template<typename... Ts, typename T>
 constexpr auto append(std::tuple<Ts...> ts, T t)
 {
     static_assert(sizeof...(Ts) > 0, "size of tuple must be greater than 1");
-    constexpr auto seq = std::make_index_sequence<sizeof...(Ts) - 1>{};
+    constexpr auto seq = std::make_index_sequence<sizeof...(Ts)>{};
     return internal::append_impl(std::forward<decltype(ts)>(ts), std::forward<T>(t), seq);
 }
 
@@ -237,6 +246,72 @@ constexpr auto rotr(std::tuple<Ts...> ts)
     const auto t = tail(ts);
     const auto rest = tailless(ts);
     return prepend(rest, t);
+}
+
+///////////////////////////////////////////////////////////////////////////
+
+
+///////////////////////////////////////////////////////////////////////////
+//
+//                    @SECTION Range
+//
+///////////////////////////////////////////////////////////////////////////
+
+namespace internal {
+
+constexpr auto range_impl(std::size_t start, std::size_t end) {
+    constexpr auto max_size = std::numeric_limits<std::size_t>::max();
+
+    start = std::min<std::size_t>(
+        std::max(std::size_t{0}, start),
+        max_size
+    );
+
+    end = std::min(end, max_size);
+    const std::size_t range = end - start;
+    return std::views::iota(start, end) | std::views::take(range);
+
+}
+
+} // @END OF namespace vtm::functional::internal
+
+constexpr auto range(std::size_t end)
+{
+    return internal::range_impl(0, end);
+}
+
+constexpr auto range(std::size_t start, std::size_t end)
+{
+    return internal::range_impl(start, end);
+}
+
+template<template<typename, std::size_t> typename C, typename T, std::size_t N>
+    requires std::ranges::sized_range<C<T, N>>
+constexpr static auto enumerate(const C<T, N>& in)
+{
+    std::size_t i = 0;
+    std::array<std::pair<std::size_t, T>, N> out;
+
+    for (const auto& e : in) {
+        out[i] = std::make_pair(i, e);
+        ++i;
+    }
+
+    return out;
+}
+
+template<template<typename> typename C, typename T>
+    requires std::ranges::sized_range<C<T>>
+constexpr static auto enumerate(const C<T>& in)
+{
+    std::size_t i = 0;
+    std::vector<std::pair<std::size_t, T>> out{};
+
+    for (const auto& e : in) {
+        out.emplace_back(std::make_pair(i++, e));
+    }
+
+    return out;
 }
 
 ///////////////////////////////////////////////////////////////////////////

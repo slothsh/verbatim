@@ -18,6 +18,7 @@
 
 // Third-party library
 #include <fmt/format.h>
+#include <magic_enum.hpp>
 
 // Project library
 #include "traits.hpp"
@@ -212,7 +213,7 @@ constexpr auto factorial(T t) -> T
 }
 
 template<std::integral T, std::invocable<T> F, T... Ns>
-constexpr auto map_integer_sequence(F f,
+consteval auto map_integer_sequence(F f,
                                     std::integer_sequence<T, Ns...> seq)
 {
     return std::integer_sequence<T, f(Ns)...>{};
