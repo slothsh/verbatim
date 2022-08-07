@@ -7,7 +7,7 @@
 #include <string>
 #include <string_view>
 
-TEST_CASE("vtm::fps Conversion", "[timecode][chrono][framerate][conversion][static]")
+TEST_CASE("type conversions for chrono fps", "[timecode][chrono][framerate][conversion][static]")
 {
     using namespace vtm::chrono;
     const auto fps_24   = fps::fps_24;

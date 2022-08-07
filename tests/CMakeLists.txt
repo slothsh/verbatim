@@ -1,7 +1,6 @@
 # Test configuration
-enable_testing()
 find_package(Catch2 REQUIRED)
-find_path(CATCH2_CMAKE NAMES Catch.cmake PATH_SUFFIX Catch2)
+find_path(CATCH2_CMAKE NAMES Catch2Config.cmake PATH_SUFFIX Catch2)
 
 # Library tests
 add_executable(edlfile.test edlfile.test.cpp)

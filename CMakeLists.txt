@@ -12,8 +12,13 @@ endif()
 
 # Comiler Warnings & Run time library
 if (MSVC)
+    if (BUILD_CONFIG STREQUAL "debug")
+        set(LINK_RUNTIME_LIB "/MTd")
+    else()
+        set(LINK_RUNTIME_LIB "/MT")
+    endif()
+
     set(COMPILE_WARNINGS "/W4")
-    set(LINK_RUNTIME_LIB "/MT")
     set(LINK_RUNTIME_EXCEPTIONS "/EHsc")
     add_compile_options(${LINK_RUNTIME_LIB} ${COMPILE_WARNINGS} ${LINK_RUNTIME_EXCEPTIONS})
 else()
@@ -34,4 +39,5 @@ include_directories(
 )
 
 # Configure tests
+enable_testing()
 add_subdirectory(tests)

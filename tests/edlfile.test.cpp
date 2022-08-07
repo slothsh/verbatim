@@ -2,7 +2,7 @@
 #include <Catch2/catch_all.hpp>
 #include "edlfile.hpp"
 
-TEST_CASE("EDL File Initialization", "[EDL File]")
+TEST_CASE("EDL initialization from file path", "[edl][parsing][initialization][io]")
 {
     // @SECTION Test variables
     constexpr std::string_view txt_path_good{"./resources/txt/helloworld.txt"};
