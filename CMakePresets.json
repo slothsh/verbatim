@@ -8,15 +8,10 @@
 
     "configurePresets": [
         {
-            "name": "debug",
-            "displayName": "Default Debug Config",
-            "description": "Default debug build configuration",
-            "architecture": "x64",
-            "generator": "Visual Studio 17 2022",
-            "toolset": "host=x64",
-            "binaryDir": "${sourceDir}/build/default-dbg",
+            "name": "common",
             "cacheVariables": {
                 "BUILD_CONFIG": "debug",
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "on",
                 "VCPKG_TARGET_TRIPLET": "x64-windows-static",
                 "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
                 "CMAKE_BUILD_TYPE": "Debug",
@@ -24,19 +19,30 @@
             }
         },
         {
+            "name": "debug",
+            "displayName": "Default Debug Config",
+            "description": "Default debug build configuration",
+            "inherits": "common",
+            "architecture": "x64",
+            "generator": "Visual Studio 17 2022",
+            "toolset": "host=x64",
+            "binaryDir": "${sourceDir}/build/default-dbg"
+        },
+        {
             "name": "release",
             "displayName": "Default Release Config",
             "description": "Default release build configuration",
+            "inherits": "common",
             "architecture": "x64",
             "toolset": "host=x64",
-            "binaryDir": "${sourceDir}/build/default-rel",
-            "cacheVariables": {
-                "BUILD_CONFIG": "release",
-                "VCPKG_TARGET_TRIPLET": "x64-windows-static",
-                "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
-                "CMAKE_BUILD_TYPE": "Release",
-                "CMAKE_INSTALL_PREFIX": "${sourceDir}/build/install/${presetName}"
-            }
+            "binaryDir": "${sourceDir}/build/default-rel"
+        },
+        {
+            "name": "clangd",
+            "displayName": "Default Configuration for clangd commands",
+            "inherits": "common",
+            "binaryDir": "${sourceDir}/build/clangd",
+            "generator": "Ninja"
         }
     ],
 

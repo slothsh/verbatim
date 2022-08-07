@@ -31,10 +31,10 @@ message(STATUS "Linking MSVC run time library to ${LINK_RUNTIME_LIB}")
 
 # Build Third-Party Dependencies via vcpkg
 find_package(fmt REQUIRED)
+find_package(magic_enum REQUIRED)
 
 # Include local and third-party headers
 include_directories(
-    third-party/magic_enum/include
     include
 )
 
