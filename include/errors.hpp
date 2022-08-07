@@ -86,11 +86,15 @@ inline auto signal_msg(error_t errcode) -> std::remove_cvref_t<Tstring>
                                                            std::abort();                                                       \
                                                          }
 
-#define VTM_ASSERT(expr, msg) __DIAGMSG_ASSERT("FATAL", expr, msg)
-#define VTM_ERROR(msg)  __DIAGMSG_NOQUIT("ERROR", msg)
-#define VTM_PANIC(msg)  __DIAGMSG_PREQUIT("APPLICATION", vtm::errors::Signal::fail_panic); __DIAGMSG_PANIC(msg)
-#define VTM_TODO(msg)   __DIAGMSG_PREQUIT("APPLICATION", vtm::errors::Signal::fail); __DIAGMSG_QUIT("TODO", msg, vtm::errors::Signal::fail)
-#define VTM_WARN(msg)   __DIAGMSG_NOQUIT("WARNING", msg)
+#define __DIAGMSG_NOQUIT_IF(prefix, expr, msg) if (!(expr)) { __DIAGMSG_NOQUIT(prefix, msg); }
+
+#define VTM_ASSERT(expr, msg)   __DIAGMSG_ASSERT("FATAL", expr, msg)
+#define VTM_ERROR(msg)          __DIAGMSG_NOQUIT("ERROR", msg)
+#define VTM_ERROR_IF(expr, msg) __DIAGMSG_NOQUIT_IF("ERROR", expr, msg)
+#define VTM_PANIC(msg)          __DIAGMSG_PREQUIT("APPLICATION", vtm::errors::Signal::fail_panic); __DIAGMSG_PANIC(msg)
+#define VTM_TODO(msg)           __DIAGMSG_PREQUIT("APPLICATION", vtm::errors::Signal::fail); __DIAGMSG_QUIT("TODO", msg, vtm::errors::Signal::fail)
+#define VTM_WARN(msg)           __DIAGMSG_NOQUIT("WARNING", msg)
+#define VTM_WARN_IF(expr, msg)  __DIAGMSG_NOQUIT_IF("WARNING", expr, msg)
 
 #endif // @END OF VTM_ERROR_MACROS
 

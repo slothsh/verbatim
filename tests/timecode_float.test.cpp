@@ -150,13 +150,3 @@ TEST_CASE("vtm::f64timecode Drop Frame Representation", "[timecode][chrono]")
     const vtm::f64timecode tc_1{0.0};
     REQUIRE(true == true);
 }
-
-
-
-
-
-
-
-
-
-

@@ -1,4 +1,6 @@
-// Stefan Olivier
+// Copyright (C) Stefan Olivier
+// <https://stefanolivier.com>
+// ----------------------------
 // Description: Type traits and interfaces
 
 #pragma once
@@ -193,6 +195,24 @@ struct arg_size
 template<auto... Args>
 inline constexpr std::size_t arg_size_v = arg_size<Args...>::value;
 
+template<std::integral T>
+struct to_signed
+{
+    using type = std::conditional_t<std::is_signed_v<T>, T, std::make_signed_t<T>>;
+};
+
+template<std::integral T>
+using to_signed_t = typename to_signed<T>::type;
+
+template<std::integral T>
+struct to_unsigned
+{
+    using type = std::conditional_t<std::is_unsigned_v<T>, T, std::make_unsigned_t<T>>;
+};
+
+template<std::integral T>
+using to_unsigned_t = typename to_unsigned<T>::type;
+
 } // @END OF namespace vtm::traits
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -233,7 +253,7 @@ struct __display_static
     auto display() const -> display_type { return display_type(static_cast<reference>(*this)); }
 
     __display_static() = default;
-    ~__display_static() = default;
+    virtual ~__display_static() = default;
 };
 
 template<Regular T>
@@ -271,7 +291,7 @@ struct __convert_to_float
     using float_type = std::remove_cvref_t<F>;
 
     __convert_to_float() = default;
-    ~__convert_to_float() = default;
+    virtual ~__convert_to_float() = default;
 
     auto as_float() -> float_type { return float_type(static_cast<reference>(*this)); };
     auto as_float() const -> float_type { return float_type(static_cast<const_reference>(*this)); };
@@ -286,7 +306,7 @@ struct __convert_to_unsigned
     using unsigned_type = std::remove_cvref_t<U>;
 
     __convert_to_unsigned() = default;
-    ~__convert_to_unsigned() = default;
+    virtual ~__convert_to_unsigned() = default;
 
     auto as_unsigned() -> unsigned_type { return unsigned_type(static_cast<reference>(*this)); };
     auto as_unsigned() const -> unsigned_type { return unsigned_type(static_cast<const_reference>(*this)); };
@@ -301,7 +321,7 @@ struct __convert_to_signed
     using signed_type = std::remove_cvref_t<I>;
 
     __convert_to_signed() = default;
-    ~__convert_to_signed() = default;
+    virtual ~__convert_to_signed() = default;
 
     auto as_signed() -> signed_type { return signed_type(static_cast<reference>(*this)); };
     auto as_signed() const -> signed_type { return signed_type(static_cast<const_reference>(*this)); };
@@ -316,7 +336,7 @@ struct __convert_to_string
     using string_type = std::remove_cvref_t<S>;
 
     __convert_to_string() = default;
-    ~__convert_to_string() = default;
+    virtual ~__convert_to_string() = default;
 
     auto as_string() -> string_type { return string_type(static_cast<reference>(*this)); };
     auto as_string() const -> string_type { return string_type(static_cast<const_reference>(*this)); };

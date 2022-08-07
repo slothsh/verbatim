@@ -212,6 +212,12 @@ constexpr auto factorial(T t) -> T
     return t * factorial(t - 1);
 }
 
+template<std::integral T, std::same_as<T>... In>
+constexpr auto accumulate(const In&... in) -> T
+{
+    return (in + ...);
+}
+
 template<std::integral T, std::invocable<T> F, T... Ns>
 consteval auto map_integer_sequence(F f,
                                     std::integer_sequence<T, Ns...> seq)
