@@ -213,7 +213,7 @@ constexpr auto factorial(T t) -> T
 }
 
 template<std::integral T, std::same_as<T>... In>
-constexpr auto accumulate(const In&... in) -> T
+constexpr auto accumulate(const In... in) -> T
 {
     return (in + ...);
 }

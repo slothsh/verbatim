@@ -64,7 +64,8 @@ using f64timecode = chrono::f64timecode;
 // @SECTION: VTM FPS factory object aliases
 using fps = chrono::fps;
 using fpsfloat_t = typename chrono::fps::float_type;
-using fpsint_t = typename chrono::fps::int_type;
+using fpsint_t = typename chrono::fps::signed_type;
+using fpsuint_t = typename chrono::fps::unsigned_type;
 
 } // @END OF namespace vtm
 

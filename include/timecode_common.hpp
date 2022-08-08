@@ -141,12 +141,14 @@ concept FpsFormatFactory = std::is_enum_v<typename T::format>
                         && std::is_same_v<typename T::type, typename T::format>
                         && requires (T t, typename T::type type) {
                                std::floating_point<typename T::float_type>;
-                               std::integral<typename T::int_type>;
+                               std::signed_integral<typename T::signed_type>;
+                               std::unsigned_integral<typename T::unsigned_type>;
                                { T::from_int(0) } -> std::same_as<typename T::type>;
                                { T::from_float(0.0) } -> std::same_as<typename T::type>;
                                { T::from_string(std::string_view("")) } -> std::same_as<typename T::type>;
                                { T::from_string(std::string("")) } -> std::same_as<typename T::type>;
-                               { T::to_int(type) } -> std::integral;
+                               { T::to_signed(type) } -> std::signed_integral;
+                               { T::to_unsigned(type) } -> std::unsigned_integral;
                                { T::to_float(type) } -> std::floating_point;
                                { T::to_string(type) } -> vtm::traits::StringLike;
                            };
@@ -169,7 +171,8 @@ struct __FPSFormat
     using __my_type = __FPSFormat<TFloat, TInt>;
     using type = format;
     using float_type = TFloat;
-    using int_type = TInt;
+    using signed_type = vtm::traits::to_signed_t<TInt>;
+    using unsigned_type = vtm::traits::to_unsigned_t<TInt>;
 
     static constexpr auto default_value() -> type
     {
@@ -196,8 +199,12 @@ struct __FPSFormat
         return __FPSFORMAT_STRING_TO_VALUE(s);
     }
 
-    static constexpr std::integral
-    auto to_int(const type& t)
+    static constexpr auto to_signed(const type& t) -> signed_type
+    {
+        return std::abs(__FPSFORMAT_VALUE_TO_INT(t));
+    }
+
+    static constexpr auto to_unsigned(const type& t) -> unsigned_type
     {
         return std::abs(__FPSFORMAT_VALUE_TO_INT(t));
     }

@@ -17,12 +17,12 @@ TEST_CASE("type conversions for chrono fps", "[timecode][chrono][framerate][conv
     const auto fps_30   = fps::fps_30;
     const auto fps_60   = fps::fps_60;
 
-    vtm::fpsfloat_t fps_float_24   = fps::to_float(fps_24);   vtm::fpsint_t fps_int_24   = fps::to_int(fps_24);   auto fps_str_24   = fps::to_string(fps_24);
-    vtm::fpsfloat_t fps_float_25   = fps::to_float(fps_25);   vtm::fpsint_t fps_int_25   = fps::to_int(fps_25);   auto fps_str_25   = fps::to_string(fps_25);
-    vtm::fpsfloat_t fps_float_29   = fps::to_float(fps_29);   vtm::fpsint_t fps_int_29   = fps::to_int(fps_29);   auto fps_str_29   = fps::to_string(fps_29);
-    vtm::fpsfloat_t fps_float_29df = fps::to_float(fps_29df); vtm::fpsint_t fps_int_29df = fps::to_int(fps_29df); auto fps_str_29df = fps::to_string(fps_29df);
-    vtm::fpsfloat_t fps_float_30   = fps::to_float(fps_30);   vtm::fpsint_t fps_int_30   = fps::to_int(fps_30);   auto fps_str_30   = fps::to_string(fps_30);
-    vtm::fpsfloat_t fps_float_60   = fps::to_float(fps_60);   vtm::fpsint_t fps_int_60   = fps::to_int(fps_60);   auto fps_str_60   = fps::to_string(fps_60);
+    vtm::fpsfloat_t fps_float_24   = fps::to_float(fps_24);   vtm::fpsint_t fps_int_24   = fps::to_signed(fps_24);   auto fps_str_24   = fps::to_string(fps_24);
+    vtm::fpsfloat_t fps_float_25   = fps::to_float(fps_25);   vtm::fpsint_t fps_int_25   = fps::to_signed(fps_25);   auto fps_str_25   = fps::to_string(fps_25);
+    vtm::fpsfloat_t fps_float_29   = fps::to_float(fps_29);   vtm::fpsint_t fps_int_29   = fps::to_signed(fps_29);   auto fps_str_29   = fps::to_string(fps_29);
+    vtm::fpsfloat_t fps_float_29df = fps::to_float(fps_29df); vtm::fpsint_t fps_int_29df = fps::to_signed(fps_29df); auto fps_str_29df = fps::to_string(fps_29df);
+    vtm::fpsfloat_t fps_float_30   = fps::to_float(fps_30);   vtm::fpsint_t fps_int_30   = fps::to_signed(fps_30);   auto fps_str_30   = fps::to_string(fps_30);
+    vtm::fpsfloat_t fps_float_60   = fps::to_float(fps_60);   vtm::fpsint_t fps_int_60   = fps::to_signed(fps_60);   auto fps_str_60   = fps::to_string(fps_60);
 
     INFO("fps_float_24: " <<   fps_float_24 << "\tfps_int_24: " <<     fps_int_24 << "\t\tfps_str_24: " <<   fps_str_24);
     INFO("fps_float_25: " <<   fps_float_25 << "\tfps_int_25: " <<     fps_int_25 << "\t\tfps_str_25: " <<   fps_str_25);
