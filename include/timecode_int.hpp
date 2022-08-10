@@ -8,6 +8,7 @@
 ///////////////////////////////////////////////////////////////////////////
 
 // Standard headers
+#include <algorithm>
 #include <bitset>
 #include <concepts>
 #include <cstdint>
@@ -45,14 +46,16 @@ namespace vtm::chrono::internal {
 #define TC_TOTAL_GROUPS 5
 #define TC_FLAGS_SIZE 8
 
-#define TCSTRING_SIZE (TC_GROUP_WIDTH * TC_TOTAL_GROUPS)
-#define TCSTRING_COLON_DEFAULT ":"
-#define TCSTRING_COLON_DROPFRAME ";"
+#define TCSTRING_GROUP_DEFAULT { '0', '0' }
+#define TCSTRING_COLON_DEFAULT ':'
+#define TCSTRING_COLON_DROPFRAME ';'
 #define TCSTRING_HRS_START 0
 #define TCSTRING_MINS_START (TC_GROUP_WIDTH * 1)
 #define TCSTRING_SECS_START (TC_GROUP_WIDTH * 2)
 #define TCSTRING_FRAMES_START (TC_GROUP_WIDTH * 3)
 #define TCSTRING_SUBFRAMES_START (TC_GROUP_WIDTH * 4)
+#define TCSTRING_SIZE ((TC_GROUP_WIDTH * TC_TOTAL_GROUPS) + (TC_TOTAL_GROUPS - 1))
+#define TCSTRING_CHAR_OFFSET 48
 
 #define TCSCALAR_HRS_MAX 60
 #define TCSCALAR_MINS_MAX 60
@@ -70,27 +73,63 @@ namespace vtm::chrono::internal {
 #define TCSCALAR_MINS_TICKS 60
 #define TCSCALAR_SECS_TICKS 1
 
-#define TCSCALAR_1HR_IN_SUBFRAMES (60 * 60 * TCSCALAR_SUBFRAMES_PER_FRAMES)
-#define TCSCALAR_1MIN_IN_SUBFRAMES (60 * TCSCALAR_SUBFRAMES_PER_FRAMES)
-#define TCSCALAR_1SEC_IN_SUBFRAMES TCSCALAR_SUBFRAMES_PER_FRAMES
+#define TCSCALAR_1HR_IN_SUBFRAMES (TCSCALAR_HRS_TICKS * TCSCALAR_SUBFRAMES_PER_FRAMES)
+#define TCSCALAR_1MIN_IN_SUBFRAMES (TCSCALAR_MINS_TICKS * TCSCALAR_SUBFRAMES_PER_FRAMES)
+#define TCSCALAR_1SEC_IN_SUBFRAMES (TCSCALAR_SECS_TICKS * TCSCALAR_SUBFRAMES_PER_FRAMES)
+
+#define TCGRP_SCALAR_START 0
+#define TCGRP_SCALAR_MIN 1
+#define TCGRP_SCALAR_MAX 2
+#define TCGRP_SCALAR_IN_SUBFRAMES 3
+#define TCGRP_STRING_START 4
+#define TICK_GROUPS = __my_type::__tick_groups
+#define GET_TICK_GRPS(inner, outer) std::get<outer>(std::get<inner>(TICK_GROUPS))
 
 // TODO: Make this accept variable size
 #define UNWRAP_TCVALUES(p, m, n) p.m[0], p.m[1], p.m[2], p.m[3], p.m[4]
 
+// TODO: Make this accept variable size
+#define TCSTRING_DEFAULT_INITIALIZER {    \
+        '0', '0', TCSTRING_COLON_DEFAULT, \
+        '0', '0', TCSTRING_COLON_DEFAULT, \
+        '0', '0', TCSTRING_COLON_DEFAULT, \
+        '0', '0', TCSTRING_COLON_DEFAULT, \
+        '0', '0'                          \
+    }
+
 ///////////////////////////////////////////////////////////////////////////
 //
-//  @SECTION Helpers for __BasicTimecodeInt
+//  @SECTION Static helpers for __BasicTimecodeInt
 //
 ///////////////////////////////////////////////////////////////////////////
 
-template<std::integral... Is, std::size_t Size = sizeof...(Is)>
-static constexpr auto __init_tick_groups(Is... is)
+template<typename... Ts, std::size_t... Is>
+static constexpr auto __init_tick_groups(std::tuple<Ts...> is, std::index_sequence<Is...> seq)
 {
-    return std::tuple { [=](std::unsigned_integral auto fps) -> std::uint64_t {
-        if (is == 0) return TCSCALAR_SUBFRAMES_PER_FRAMES;
-        else if (is == -1) return 1; 
-        else return is * fps * TCSCALAR_SUBFRAMES_PER_FRAMES;
-    } ... };
+    return std::tuple {
+        std::tuple {
+            std::get<Is>(is)[0],
+            std::get<Is>(is)[1],
+            std::get<Is>(is)[2],
+            std::get<Is>(is)[4],
+
+            [=](std::unsigned_integral auto fps) -> std::uint64_t {
+                if (std::get<Is>(is)[3] == 0) return TCSCALAR_SUBFRAMES_PER_FRAMES;
+                else if (std::get<Is>(is)[3] == -1) return 1; 
+                return std::get<Is>(is)[3] * fps;
+            },
+
+            [=]<typename T>(T value) {
+                T str[TC_GROUP_WIDTH] = TCSTRING_GROUP_DEFAULT;
+
+                /* if (value < std::get<Is>(is)[2]) { */
+                /*     vtm::utility::to_string(value, str); */
+                /* } */
+
+                return 'a';
+            }
+        } ...
+    };
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -130,8 +169,6 @@ public:
     using display_t       = string_view_t;
     using fps_factory_t   = TFps;
     using fps_t           = typename TFps::type;
-    using __element1_type = float_t;
-    using __element2_type = fps_t;
     using flags_t         = std::bitset<TC_FLAGS_SIZE>;
     using scalar_t        = std::uint8_t;
 
@@ -140,17 +177,20 @@ public:
 
 ///////////////////////////////////////////////////////////////////////////
 //
-//  @SECTION Static Data Members
+//  @SECTION Private Static Data Members
 //
 ///////////////////////////////////////////////////////////////////////////
 
-public:
+private:
     static constexpr std::tuple __tick_groups = __init_tick_groups(
-        TCSCALAR_1HR_IN_SUBFRAMES,
-        TCSCALAR_1MIN_IN_SUBFRAMES,
-        TCSCALAR_1SEC_IN_SUBFRAMES,
-        0,
-        -1
+        std::tuple{
+            std::array { TCSCALAR_HRS_START,       0, TCSCALAR_HRS_MAX,       TCSCALAR_1HR_IN_SUBFRAMES,  TCSTRING_HRS_START       },
+            std::array { TCSCALAR_MINS_START,      0, TCSCALAR_MINS_MAX,      TCSCALAR_1MIN_IN_SUBFRAMES, TCSTRING_MINS_START      },
+            std::array { TCSCALAR_SECS_START,      0, TCSCALAR_SECS_MAX,      TCSCALAR_1SEC_IN_SUBFRAMES, TCSTRING_SECS_START      },
+            std::array { TCSCALAR_FRAMES_START,    0, TCSCALAR_FRAMES_MAX,    0                         , TCSTRING_FRAMES_START    },
+            std::array { TCSCALAR_SUBFRAMES_START, 0, TCSCALAR_SUBFRAMES_MAX, -1                        , TCSTRING_SUBFRAMES_START }
+        },
+        std::make_index_sequence<TC_TOTAL_GROUPS>{}
     );
 
 ///////////////////////////////////////////////////////////////////////////
@@ -250,28 +290,47 @@ public:
 public:
     operator signed_type() const
     {
-        auto fps_value = fps_factory_t::to_signed(this->_fps);
-        return vtm::utility::accumulate<signed_type>(
-                static_cast<signed_type>(this->at<TCSCALAR_HRS_START>()) * 60 * 60 * fps_value,
-                static_cast<signed_type>(this->at<TCSCALAR_MINS_START>()) * 60 * fps_value,
-                static_cast<signed_type>(this->at<TCSCALAR_SECS_START>()) * fps_value,
-                static_cast<signed_type>(this->at<TCSCALAR_FRAMES_START>())
-        ) * TCSCALAR_SUBFRAMES_PER_FRAMES + static_cast<signed_type>(this->at<TCSCALAR_SUBFRAMES_START>());
+        return this->implicit_number_conversion_impl<signed_type>(std::make_index_sequence<TC_TOTAL_GROUPS>{});
     }
 
     operator unsigned_type() const
     {
-        VTM_TODO("not implemented");
+        return this->implicit_number_conversion_impl<unsigned_type>(std::make_index_sequence<TC_TOTAL_GROUPS>{});
     }
 
     operator float_type() const
     {
-        VTM_TODO("not implemented");
+        return this->implicit_number_conversion_impl<float_type>(std::make_index_sequence<TC_TOTAL_GROUPS>{});
     }
 
     operator string_type() const
     {
-        VTM_TODO("not implemented");
+        /* VTM_TODO("not implemented"); */
+
+        char_t tc_string[TCSTRING_SIZE] = TCSTRING_DEFAULT_INITIALIZER;
+        this->fill_tcstring_array(tc_string, std::make_index_sequence<TC_TOTAL_GROUPS>{});
+        string_t str(TCSTRING_SIZE, '\0');
+
+        for (std::size_t i = 0; i < TCSTRING_SIZE; ++i) {
+            str[i] = tc_string[i];
+        }
+
+        return str;
+    }
+
+private:
+    template<TimecodePrimitive T, std::size_t... Is>
+    constexpr auto implicit_number_conversion_impl(std::index_sequence<Is...> seq) const noexcept -> T
+    {
+        static_assert(sizeof...(Is) == TC_TOTAL_GROUPS,
+                      "index sequence of local input variable \"seq\" has more indexes than this->_values container, which will result in buffer overflow");
+
+        const auto fps_factor = fps_factory_t::to_unsigned(this->_fps);
+        return (
+            (this->_values[std::get<0>(std::get<Is>(__my_type::__tick_groups))]
+             * std::get<3>(std::get<Is>(__my_type::__tick_groups))(fps_factor))
+             + ...
+        );
     }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -284,18 +343,39 @@ public:
 ///////////////////////////////////////////////////////////////////////////
 
 public:
-    // TODO: Frame rate aware set_value()
-    void set_value(const __BasicTimecodeInt& value)
+    template<std::integral V>
+    void set_ticks(const V ticks)
     {
-        this->_values = value._values;
+        VTM_ASSERT(ticks >= 0, "cannot set ticks to value less than 0");
+        this->set_ticks_impl(ticks, std::make_index_sequence<TC_TOTAL_GROUPS>{});
     }
 
-    template<TimecodePrimitive V>
-    void set_value(const V value) noexcept
+private:
+    template<std::integral T, std::size_t... Is>
+    constexpr void set_ticks_impl(T ticks, std::index_sequence<Is...> seq)
     {
-        VTM_TODO("not implemented");
+        static_assert(sizeof...(Is) == TC_TOTAL_GROUPS,
+                      "index sequence of local input variable \"seq\" has more indexes than this->_values container, which will result in buffer overflow");
+
+        const unsigned_type fps_factor = fps_factory_t::to_unsigned(this->_fps);
+        const std::array indexes = { std::get<0>(std::get<Is>(__my_type::__tick_groups)) ... };
+        const std::array factors = { std::get<3>(std::get<Is>(__my_type::__tick_groups))(fps_factor) ... };
+        for (const auto& i : indexes) {
+            if (ticks >= factors[i]) {
+                this->_values[i] = ticks / factors[i];
+                ticks %= factors[i];
+            }
+
+            else {
+                this->_values[i] = 0;
+            }
+        }
+
+        // TODO: handle remainder of ticks > 0
+        this->_values[TCSCALAR_SUBFRAMES_START] += ticks;
     }
 
+public:
     void set_fps(const fps_t fps) noexcept
     {
         this->_fps = fps;
@@ -309,12 +389,11 @@ public:
     template<std::integral T>
     void set_hours(T hours)
     {
-        const auto [ value, remainder ] = this->reduce<TCSCALAR_HRS_START>(hours);
-        // TODO: Handle overflow if (remainder > 0) 
-        this->_values[TCSCALAR_HRS_START] = value / (60 * 60) / fps_factory_t::to_unsigned(this->_fps) / TCSCALAR_SUBFRAMES_PER_FRAMES;
+        const auto ticks = this->to_ticks<TCSCALAR_HRS_START>(std::forward<T>(hours));
+        this->set_ticks(ticks);
     }
 
-    scalar_t hours() const noexcept
+    unsigned_type hours() const noexcept
     {
         return this->_values[TCSCALAR_HRS_START];
     }
@@ -322,12 +401,11 @@ public:
     template<std::integral T>
     void set_minutes(T minutes)
     {
-        const auto [ value, remainder ] = this->reduce<TCSCALAR_HRS_START>(minutes);
-        if (remainder > 0) this->set_hours(remainder);
-        this->_values[TCSCALAR_MINS_START] = value / 60 / fps_factory_t::to_unsigned(this->_fps) / TCSCALAR_SUBFRAMES_PER_FRAMES;
+        const auto ticks = this->to_ticks<TCSCALAR_MINS_START>(std::forward<T>(minutes));
+        this->set_ticks(ticks);
     }
 
-    scalar_t minutes() const noexcept
+    unsigned_type minutes() const noexcept
     {
         return this->_values[TCSCALAR_MINS_START];
     }
@@ -335,12 +413,11 @@ public:
     template<std::integral T>
     void set_seconds(T seconds)
     {
-        const auto [ value, remainder ] = this->reduce<TCSCALAR_HRS_START>(seconds);
-        if (remainder > 0) this->set_minutes(remainder);
-        this->_values[TCSCALAR_SECS_START] = value / fps_factory_t::to_unsigned(this->_fps) / TCSCALAR_SUBFRAMES_PER_FRAMES;
+        const auto ticks = this->to_ticks<TCSCALAR_SECS_START>(std::forward<T>(seconds));
+        this->set_ticks(ticks);
     }
 
-    scalar_t seconds() const noexcept
+    unsigned_type seconds() const noexcept
     {
         return this->_values[TCSCALAR_SECS_START];
     }
@@ -348,12 +425,11 @@ public:
     template<std::integral T>
     void set_frames(T frames)
     {
-        const auto [ value, remainder ] = this->reduce<TCSCALAR_HRS_START>(frames);
-        if (remainder > 0) this->set_seconds(remainder);
-        this->_values[TCSCALAR_FRAMES_START] = value / fps_factory_t::to_unsigned(this->_fps) / TCSCALAR_SUBFRAMES_PER_FRAMES;
+        const auto ticks = this->to_ticks<TCSCALAR_FRAMES_START>(std::forward<T>(frames));
+        this->set_ticks(ticks);
     }
 
-    scalar_t frames() const noexcept
+    unsigned_type frames() const noexcept
     {
         return this->_values[TCSCALAR_FRAMES_START];
     }
@@ -361,12 +437,11 @@ public:
     template<std::integral T>
     void set_subframes(T subframes)
     {
-        const auto [ value, remainder ] = this->reduce<TCSCALAR_HRS_START>(subframes);
-        if (remainder > 0) this->set_frames(remainder);
-        this->_values[TCSCALAR_SUBFRAMES_START] = value;
+        const auto ticks = this->to_ticks<TCSCALAR_SUBFRAMES_START>(std::forward<T>(subframes));
+        this->set_ticks(ticks);
     }
 
-    scalar_t subframes() const noexcept
+    unsigned_type subframes() const noexcept
     {
         return this->_values[TCSCALAR_SUBFRAMES_START];
     }
@@ -429,23 +504,33 @@ private:
     }
 
     template<std::size_t Index, std::integral T>
-    constexpr auto reduce(T value) const
+    constexpr auto to_ticks(T value) const -> vtm::traits::to_unsigned_t<T>
     {
+        if (value <= 0) return 0;
+        // TODO: Set negative flag if value < 0 ???
+
         static_assert(Index < TC_TOTAL_GROUPS, "index for static data member tick_groups must be less than TC_TOTAL_GROUPS");
+        const auto [ index, min, max, get_tick_factor, _ ] = std::get<Index>(__my_type::__tick_groups);
+        const unsigned_type tick_factor = get_tick_factor(fps_factory_t::to_unsigned(this->_fps));
+        VTM_ASSERT(tick_factor > 0, "tick_factor evaluated to 0, which could result in unexpected results with multiplication by zero");
 
-        const std::uint64_t tick_size = std::get<Index>(__BasicTimecodeInt::__tick_groups)(fps_factory_t::to_unsigned(this->_fps));
-        VTM_ASSERT(tick_size > 0, "tick_size evaluated to 0, which would result in undefined behaviour with division by zero");
-        
-        std::uint64_t v = value / tick_size;
-        std::uint64_t r = value % tick_size;
+        return value * tick_factor;
+    }
 
-        if (value >= tick_size && Index < TC_TOTAL_GROUPS) {
-            const auto [ v_, r_ ] = this->reduce<Index + 1>(value);
-            v = v_;
-            r = r_;
-        }
+    template<std::size_t I, std::size_t Size>
+    constexpr void array_set(auto& arr, auto value) const
+    {
+        static_assert(I < Size, "index for array type is greater than its size, this will result in a buffer overflow");
+        arr[I] = value;
+    }
 
-        return std::make_tuple(v, r);
+    template<std::size_t StrSize, std::size_t... Is>
+    constexpr void fill_tcstring_array(char_t(&tcstring)[StrSize], std::index_sequence<Is...> seq) const
+    {
+        ((array_set<
+            std::get<4>(std::get<Is>(__my_type::__tick_groups)),
+            TCSTRING_SIZE
+        >(tcstring, std::get<4>(std::get<Is>(__my_type::__tick_groups))(std::get<0>(std::get<Is>(__my_type::__tick_groups))))), ... );
     }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -469,6 +554,7 @@ private:
 #undef TC_TOTAL_GROUPS
 #undef TC_FLAGS_SIZE
 
+#undef TCSTRING_GROUP_DEFAULT
 #undef TCSTRING_SIZE
 #undef TCSTRING_COLON_DEFAULT
 #undef TCSTRING_COLON_DROPFRAME
@@ -477,6 +563,7 @@ private:
 #undef TCSTRING_SECS_START
 #undef TCSTRING_FRAMES_START
 #undef TCSTRING_SUBFRAMES_START
+#undef TCSTRING_CHAR_OFFSET
 
 #undef TCSCALAR_HRS_START
 #undef TCSCALAR_MINS_START
@@ -495,6 +582,7 @@ private:
 #undef TCSCALAR_1SEC_IN_SUBFRAMES
 
 #undef UNWRAP_TCVALUES
+#undef TCSTRING_DEFAULT_INITIALIZER
 
 } // @END OF namespace vtm::chrono::internal
 

@@ -218,6 +218,34 @@ constexpr auto accumulate(const In... in) -> T
     return (in + ...);
 }
 
+template<std::integral T>
+constexpr auto clamp(T min, T max, T value)
+{
+    return std::min(std::max(min, value), max);
+}
+
+template<std::integral T, std::integral C, std::size_t N>
+constexpr void to_string(T value, C(&storage)[N])
+{
+    std::size_t size = 0;
+    T test = value;
+    while (test / 10 > 0) {
+        test /= 10;
+        ++size;
+    }
+
+    std::size_t index = 0;
+    while (value / 10 >= 0) {
+        value /= 10;
+        T remainder = value % 10;
+        if (size - index >= N) index = 0;
+        storage[size - index] = remainder + '0';
+        ++index;
+    }
+
+    storage[size - index + 1] = 0;
+}
+
 template<std::integral T, std::invocable<T> F, T... Ns>
 consteval auto map_integer_sequence(F f,
                                     std::integer_sequence<T, Ns...> seq)
