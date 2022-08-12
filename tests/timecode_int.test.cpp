@@ -158,9 +158,13 @@ TEST_CASE("vtm::timecode string conversions", "[chrono][timecode][conversion][st
 {
     SECTION("construct and convert to string type")
     {
-        constexpr vtm::timecode t1{};
+        vtm::timecode t1{};
         std::string str1 = t1;
         INFO("tc1 string: " << str1);
         REQUIRE(str1 == "00:00:00:00:00");
+        t1.set_hours(59);
+        std::string str2 = t1;
+        INFO("tc2 string: " << str2);
+        REQUIRE(str2 == "59:00:00:00:00");
     }
 }

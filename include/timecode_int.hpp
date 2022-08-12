@@ -50,10 +50,10 @@ namespace vtm::chrono::internal {
 #define TCSTRING_COLON_DEFAULT ':'
 #define TCSTRING_COLON_DROPFRAME ';'
 #define TCSTRING_HRS_START 0
-#define TCSTRING_MINS_START (TC_GROUP_WIDTH * 1)
-#define TCSTRING_SECS_START (TC_GROUP_WIDTH * 2)
-#define TCSTRING_FRAMES_START (TC_GROUP_WIDTH * 3)
-#define TCSTRING_SUBFRAMES_START (TC_GROUP_WIDTH * 4)
+#define TCSTRING_MINS_START (TC_GROUP_WIDTH * 1 + 1)
+#define TCSTRING_SECS_START (TC_GROUP_WIDTH * 2 + 2)
+#define TCSTRING_FRAMES_START (TC_GROUP_WIDTH * 3 + 3)
+#define TCSTRING_SUBFRAMES_START (TC_GROUP_WIDTH * 4 + 4)
 #define TCSTRING_SIZE ((TC_GROUP_WIDTH * TC_TOTAL_GROUPS) + (TC_TOTAL_GROUPS - 1))
 #define TCSTRING_CHAR_OFFSET 48
 
@@ -77,13 +77,30 @@ namespace vtm::chrono::internal {
 #define TCSCALAR_1MIN_IN_SUBFRAMES (TCSCALAR_MINS_TICKS * TCSCALAR_SUBFRAMES_PER_FRAMES)
 #define TCSCALAR_1SEC_IN_SUBFRAMES (TCSCALAR_SECS_TICKS * TCSCALAR_SUBFRAMES_PER_FRAMES)
 
+#define __TCGRP_SCALAR_START 0
+#define __TCGRP_SCALAR_MIN 1
+#define __TCGRP_SCALAR_MAX 2
+#define __TCGRP_SCALAR_IN_SUBFRAMES 3
+#define __TCGRP_STRING_START 4
+
 #define TCGRP_SCALAR_START 0
 #define TCGRP_SCALAR_MIN 1
 #define TCGRP_SCALAR_MAX 2
 #define TCGRP_SCALAR_IN_SUBFRAMES 3
 #define TCGRP_STRING_START 4
-#define TICK_GROUPS = __my_type::__tick_groups
-#define GET_TICK_GRPS(inner, outer) std::get<outer>(std::get<inner>(TICK_GROUPS))
+#define TCGRP_SCALAR_VALUE_MAPPING 5
+#define TCGRP_STRING_MAPPING 6
+#define TICK_GROUPS __my_type::__tick_groups
+#define GET_TCGRP_AT(outer, inner) std::get<outer>(std::get<inner>(TICK_GROUPS))
+#define GET_TCGRP_SCALAR_START(inner) GET_TCGRP_AT(TCGRP_SCALAR_START, inner)
+#define GET_TCGRP_SCALAR_MIN(inner) GET_TCGRP_AT(TCGRP_SCALAR_MIN, inner)
+#define GET_TCGRP_SCALAR_MAX(inner) GET_TCGRP_AT(TCGRP_SCALAR_MAX, inner)
+#define GET_TCGRP_SCALAR_IN_SUBFRAMES(inner) GET_TCGRP_AT(TCGRP_SCALAR_IN_SUBFRAMES, inner)
+#define GET_TCGRP_SCALAR_VALUE_MAPPING(inner) GET_TCGRP_AT(TCGRP_SCALAR_VALUE_MAPPING, inner)
+#define CALL_TCGRP_SCALAR_VALUE_MAPPING(inner, ...) GET_TCGRP_SCALAR_VALUE_MAPPING(inner)(__VA_ARGS__)
+#define GET_TCGRP_STRING_START(inner) GET_TCGRP_AT(TCGRP_STRING_START, inner)
+#define GET_TCGRP_STRING_MAPPING(inner) GET_TCGRP_AT(TCGRP_STRING_MAPPING, inner)
+#define CALL_TCGRP_STRING_MAPPING(inner, ...) GET_TCGRP_STRING_MAPPING(inner)(__VA_ARGS__)
 
 // TODO: Make this accept variable size
 #define UNWRAP_TCVALUES(p, m, n) p.m[0], p.m[1], p.m[2], p.m[3], p.m[4]
@@ -108,25 +125,27 @@ static constexpr auto __init_tick_groups(std::tuple<Ts...> is, std::index_sequen
 {
     return std::tuple {
         std::tuple {
-            std::get<Is>(is)[0],
-            std::get<Is>(is)[1],
-            std::get<Is>(is)[2],
-            std::get<Is>(is)[4],
+            std::get<Is>(is)[__TCGRP_SCALAR_START],
+            std::get<Is>(is)[__TCGRP_SCALAR_MIN],
+            std::get<Is>(is)[__TCGRP_SCALAR_MAX],
+            std::get<Is>(is)[__TCGRP_SCALAR_IN_SUBFRAMES],
+            std::get<Is>(is)[__TCGRP_STRING_START],
 
             [=](std::unsigned_integral auto fps) -> std::uint64_t {
-                if (std::get<Is>(is)[3] == 0) return TCSCALAR_SUBFRAMES_PER_FRAMES;
-                else if (std::get<Is>(is)[3] == -1) return 1; 
-                return std::get<Is>(is)[3] * fps;
+                if (std::get<Is>(is)[__TCGRP_SCALAR_IN_SUBFRAMES] == 0) return TCSCALAR_SUBFRAMES_PER_FRAMES;
+                else if (std::get<Is>(is)[__TCGRP_SCALAR_IN_SUBFRAMES] == -1) return 1; 
+                return std::get<Is>(is)[__TCGRP_SCALAR_IN_SUBFRAMES] * fps;
             },
 
             [=]<typename T>(T value) {
                 T str[TC_GROUP_WIDTH] = TCSTRING_GROUP_DEFAULT;
 
-                /* if (value < std::get<Is>(is)[2]) { */
-                /*     vtm::utility::to_string(value, str); */
-                /* } */
+                for (std::size_t i = 0; i < TC_GROUP_WIDTH; ++i) {
+                    str[TC_GROUP_WIDTH - i - 1] = value % 10 + '0';
+                    value /= 10;
+                }
 
-                return 'a';
+                return str;
             }
         } ...
     };
@@ -327,8 +346,7 @@ private:
 
         const auto fps_factor = fps_factory_t::to_unsigned(this->_fps);
         return (
-            (this->_values[std::get<0>(std::get<Is>(__my_type::__tick_groups))]
-             * std::get<3>(std::get<Is>(__my_type::__tick_groups))(fps_factor))
+            (this->_values[GET_TCGRP_SCALAR_START(Is)] * CALL_TCGRP_SCALAR_VALUE_MAPPING(Is, fps_factor))
              + ...
         );
     }
@@ -358,8 +376,8 @@ private:
                       "index sequence of local input variable \"seq\" has more indexes than this->_values container, which will result in buffer overflow");
 
         const unsigned_type fps_factor = fps_factory_t::to_unsigned(this->_fps);
-        const std::array indexes = { std::get<0>(std::get<Is>(__my_type::__tick_groups)) ... };
-        const std::array factors = { std::get<3>(std::get<Is>(__my_type::__tick_groups))(fps_factor) ... };
+        const std::array indexes = { GET_TCGRP_SCALAR_START(Is) ... };
+        const std::array factors = { CALL_TCGRP_SCALAR_VALUE_MAPPING(Is, fps_factor) ... };
         for (const auto& i : indexes) {
             if (ticks >= factors[i]) {
                 this->_values[i] = ticks / factors[i];
@@ -510,27 +528,29 @@ private:
         // TODO: Set negative flag if value < 0 ???
 
         static_assert(Index < TC_TOTAL_GROUPS, "index for static data member tick_groups must be less than TC_TOTAL_GROUPS");
-        const auto [ index, min, max, get_tick_factor, _ ] = std::get<Index>(__my_type::__tick_groups);
-        const unsigned_type tick_factor = get_tick_factor(fps_factory_t::to_unsigned(this->_fps));
+        const unsigned_type tick_factor = CALL_TCGRP_SCALAR_VALUE_MAPPING(Index,
+                                                                          fps_factory_t::to_unsigned(this->_fps));
         VTM_ASSERT(tick_factor > 0, "tick_factor evaluated to 0, which could result in unexpected results with multiplication by zero");
 
         return value * tick_factor;
     }
 
-    template<std::size_t I, std::size_t Size>
-    constexpr void array_set(auto& arr, auto value) const
+    template<std::size_t I, std::size_t Size, std::size_t... Is>
+    constexpr void array_set(auto& arr, auto value,  std::index_sequence<Is...> seq) const
     {
         static_assert(I < Size, "index for array type is greater than its size, this will result in a buffer overflow");
-        arr[I] = value;
+        for (std::size_t i = 0; i < TC_GROUP_WIDTH; ++i) {
+            arr[I + i] = value[i];
+        }
     }
 
     template<std::size_t StrSize, std::size_t... Is>
     constexpr void fill_tcstring_array(char_t(&tcstring)[StrSize], std::index_sequence<Is...> seq) const
     {
-        ((array_set<
-            std::get<4>(std::get<Is>(__my_type::__tick_groups)),
-            TCSTRING_SIZE
-        >(tcstring, std::get<4>(std::get<Is>(__my_type::__tick_groups))(std::get<0>(std::get<Is>(__my_type::__tick_groups))))), ... );
+        ((array_set<GET_TCGRP_STRING_START(Is),TCSTRING_SIZE>(tcstring,
+                                                              CALL_TCGRP_STRING_MAPPING(Is, this->_values[GET_TCGRP_SCALAR_START(Is)]),
+                                                              std::make_index_sequence<TC_GROUP_WIDTH>{})
+        ), ... );
     }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -577,12 +597,42 @@ private:
 #undef TCSCALAR_FRAMES_MAX
 #undef TCSCALAR_SUBFRAMES_MAX
 
+#undef TCSCALAR_HRS_TICKS
+#undef TCSCALAR_MINS_TICKS
+#undef TCSCALAR_SECS_TICKS
+
+#undef __TCGRP_SCALAR_START
+#undef __TCGRP_SCALAR_MIN
+#undef __TCGRP_SCALAR_MAX
+#undef __TCGRP_SCALAR_IN_SUBFRAMES
+#undef __TCGRP_STRING_START
+
+#undef TCGRP_SCALAR_START
+#undef TCGRP_SCALAR_MIN
+#undef TCGRP_SCALAR_MAX
+#undef TCGRP_SCALAR_IN_SUBFRAMES
+#undef TCGRP_STRING_START
+#undef TCGRP_SCALAR_VALUE_MAPPING
+#undef TCGRP_STRING_MAPPING
+#undef TICK_GROUPS
+#undef GET_TCGRP_AT
+#undef GET_TCGRP_SCALAR_START
+#undef GET_TCGRP_SCALAR_MIN
+#undef GET_TCGRP_SCALAR_MAX
+#undef GET_TCGRP_SCALAR_IN_SUBFRAMES
+#undef GET_TCGRP_SCALAR_VALUE_MAPPING
+#undef CALL_TCGRP_SCALAR_VALUE_MAPPING
+#undef GET_TCGRP_STRING_START
+#undef GET_TCGRP_STRING_MAPPING
+#undef CALL_TCGRP_STRING_MAPPING
+
 #undef TCSCALAR_1HR_IN_SUBFRAMES
 #undef TCSCALAR_1MIN_IN_SUBFRAMES
 #undef TCSCALAR_1SEC_IN_SUBFRAMES
 
 #undef UNWRAP_TCVALUES
 #undef TCSTRING_DEFAULT_INITIALIZER
+
 
 } // @END OF namespace vtm::chrono::internal
 
