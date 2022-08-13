@@ -394,6 +394,21 @@ public:
         __set_values_default(this->_values);
     }
 
+    unsigned_type ticks() const noexcept
+    {
+        return this->ticks_impl(std::make_index_sequence<TC_TOTAL_GROUPS>{});
+    }
+
+private:
+    template<std::size_t... Is>
+    inline unsigned_type ticks_impl(std::index_sequence<Is...> seq) const noexcept
+    {
+        return ((this->_values[Is]
+                * CALL_TCGRP_SCALAR_VALUE_MAPPING(Is, fps_t::to_unsigned(this->_fps)))
+                + ...);
+    }
+
+public:
     template<std::integral V>
     void set_ticks(const V ticks)
     {
@@ -438,7 +453,7 @@ public:
     template<std::integral T>
     void set_hours(T hours)
     {
-        const auto ticks = this->to_ticks<TCSCALAR_HRS_START>(std::forward<T>(hours));
+        const auto ticks = this->to_ticks<TCSCALAR_HRS_START>(hours);
         this->set_ticks(ticks);
     }
 
@@ -450,7 +465,7 @@ public:
     template<std::integral T>
     void set_minutes(T minutes)
     {
-        const auto ticks = this->to_ticks<TCSCALAR_MINS_START>(std::forward<T>(minutes));
+        const auto ticks = this->to_ticks<TCSCALAR_MINS_START>(minutes);
         this->set_ticks(ticks);
     }
 
@@ -462,7 +477,7 @@ public:
     template<std::integral T>
     void set_seconds(T seconds)
     {
-        const auto ticks = this->to_ticks<TCSCALAR_SECS_START>(std::forward<T>(seconds));
+        const auto ticks = this->to_ticks<TCSCALAR_SECS_START>(seconds);
         this->set_ticks(ticks);
     }
 
@@ -474,7 +489,7 @@ public:
     template<std::integral T>
     void set_frames(T frames)
     {
-        const auto ticks = this->to_ticks<TCSCALAR_FRAMES_START>(std::forward<T>(frames));
+        const auto ticks = this->to_ticks<TCSCALAR_FRAMES_START>(frames);
         this->set_ticks(ticks);
     }
 
@@ -486,7 +501,7 @@ public:
     template<std::integral T>
     void set_subframes(T subframes)
     {
-        const auto ticks = this->to_ticks<TCSCALAR_SUBFRAMES_START>(std::forward<T>(subframes));
+        const auto ticks = this->to_ticks<TCSCALAR_SUBFRAMES_START>(subframes);
         this->set_ticks(ticks);
     }
 

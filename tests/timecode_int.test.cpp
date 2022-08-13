@@ -160,7 +160,55 @@ TEST_CASE("vtm::timecode set value semantics", "[chrono][timecode][conversion][n
         INFO("tc1 seconds: "   << tc1.seconds());   CHECK(tc1.seconds()   == 42);
         INFO("tc1 frames: "    << tc1.frames());    CHECK(tc1.frames()    == 4);
         INFO("tc1 subframes: " << tc1.subframes()); CHECK(tc1.subframes() == 69);
-        INFO("tc1 fps: "       << tc1.fps());       CHECK(tc1.fps()       == vtm::fps::fps_25);
+        INFO("tc1 fps: "       << tc1.fps());       CHECK(tc1.fps()       == vtm::fps::default_value());
+    }
+}
+
+TEST_CASE("vtm::timecode tick value representation", "[chrono][timecode][number]")
+{
+    SECTION("setting ticks is calculated as expected") {
+        // default object
+        vtm::timecode tc1{};
+
+        tc1.set_ticks(
+            1 * 60 * 60 * 25 * 100 +
+            2 * 60 * 25 * 100 +
+            3 * 25 * 100 +
+            4 * 100 +
+            5
+        );
+
+        // pre-conditions for test
+        INFO("tc1 fps: "   << tc1.fps());   REQUIRE(tc1.fps() == vtm::fps::default_value());
+
+        // conditions for test
+        INFO("tc1 hours: "     << tc1.hours());     CHECK(tc1.hours()     == 1);
+        INFO("tc1 minutes: "   << tc1.minutes());   CHECK(tc1.minutes()   == 2);
+        INFO("tc1 seconds: "   << tc1.seconds());   CHECK(tc1.seconds()   == 3);
+        INFO("tc1 frames: "    << tc1.frames());    CHECK(tc1.frames()    == 4);
+        INFO("tc1 subframes: " << tc1.subframes()); CHECK(tc1.subframes() == 5);
+    }
+
+    SECTION("setting ticks by group is calculated as expected") {
+        // default object
+        vtm::timecode tc1{};
+
+        tc1.set_hours(1);
+        tc1.set_minutes(2);
+        tc1.set_seconds(3);
+        tc1.set_frames(4);
+        tc1.set_subframes(5);
+
+        // pre-conditions for test
+        INFO("tc1 fps: "   << tc1.fps());   REQUIRE(tc1.fps() == vtm::fps::default_value());
+
+        // conditions for test
+        INFO("tc1 ticks: " << tc1.ticks()); CHECK(tc1.ticks() == (1 * 60 * 60 * 25 * 100) +
+                                                                 (2 * 60 * 25 * 100) +
+                                                                 (3 * 25 * 100) +
+                                                                 (4 * 100) +
+                                                                 5);
+
     }
 }
 
