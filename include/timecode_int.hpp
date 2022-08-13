@@ -38,7 +38,7 @@ namespace vtm::chrono::internal {
 
 ///////////////////////////////////////////////////////////////////////////
 //
-//  -- @SECTION __BasicTimecodeInt --
+//  -- @SECTION __BasicTimecodeInt Static Config --
 //
 ///////////////////////////////////////////////////////////////////////////
 
@@ -106,6 +106,9 @@ namespace vtm::chrono::internal {
 #define UNWRAP_TCVALUES(p, m, n) p.m[0], p.m[1], p.m[2], p.m[3], p.m[4]
 
 // TODO: Make this accept variable size
+#define TCVALUES_DEFAULT_INITIALIZER { 0, 0, 0, 0, 0 }
+
+// TODO: Make this accept variable size
 #define TCSTRING_DEFAULT_INITIALIZER {    \
         '0', '0', TCSTRING_COLON_DEFAULT, \
         '0', '0', TCSTRING_COLON_DEFAULT, \
@@ -153,22 +156,30 @@ static constexpr auto __init_tick_groups(std::tuple<Ts...> is, std::index_sequen
 
 ///////////////////////////////////////////////////////////////////////////
 
+
+///////////////////////////////////////////////////////////////////////////
+//
+//  @SECTION __BasicTimecodeInt
+//
 ///////////////////////////////////////////////////////////////////////////
 
 // TODO: concept & type trait to get unsigned and signed types
+#define __TEMPLATE_TYPE __BasicTimecodeInt<TInt, TFloat, TString, TView, TFps>
 template<std::integral TInt,
          std::floating_point TFloat,
          vtm::traits::StringLike TString,
          vtm::traits::StringLike TView,
          FpsFormatFactory TFps>
-class __BasicTimecodeInt : public vtm::traits::__reset
-                         , public vtm::traits::__implicit_string_overloads<TString, TView>
+class __BasicTimecodeInt : public vtm::traits::__implicit_string_overloads_crtp<__TEMPLATE_TYPE, TString, TView>
                          , public vtm::traits::__display<typename vtm::traits::__implicit_string_overloads<TString, TView>::string_view_type>
-                         , public vtm::traits::__convert_to_signed<__BasicTimecodeInt<TInt, TFloat, TString, TView, TFps>, vtm::traits::to_signed_t<TInt>>
-                         , public vtm::traits::__convert_to_unsigned<__BasicTimecodeInt<TInt, TFloat, TString, TView, TFps>, vtm::traits::to_unsigned_t<TInt>>
-                         , public vtm::traits::__convert_to_float<__BasicTimecodeInt<TInt, TFloat, TString, TView, TFps>, TFloat>
-                         , public vtm::traits::__convert_to_string<__BasicTimecodeInt<TInt, TFloat, TString, TView, TFps>, TString>
+                         , public vtm::traits::__convert_to_signed<__TEMPLATE_TYPE, vtm::traits::to_signed_t<TInt>>
+                         , public vtm::traits::__convert_to_unsigned<__TEMPLATE_TYPE, vtm::traits::to_unsigned_t<TInt>>
+                         , public vtm::traits::__convert_to_float<__TEMPLATE_TYPE, TFloat>
+                         , public vtm::traits::__convert_to_string<__TEMPLATE_TYPE, TString>
 {
+
+///////////////////////////////////////////////////////////////////////////
+
 
 ///////////////////////////////////////////////////////////////////////////
 //
@@ -177,7 +188,7 @@ class __BasicTimecodeInt : public vtm::traits::__reset
 ///////////////////////////////////////////////////////////////////////////
 
 public:
-    using __my_type       = __BasicTimecodeInt<TInt, TFloat, TString, TView, TFps>;
+    using __my_type       = __TEMPLATE_TYPE;
     using string_t        = typename vtm::traits::__implicit_string_overloads<TString, TView>::string_type;
     using string_view_t   = typename vtm::traits::__implicit_string_overloads<TString, TView>::string_view_type;
     using signed_type     = typename vtm::traits::__convert_to_signed<__my_type, vtm::traits::to_signed_t<TInt>>::signed_type;
@@ -186,8 +197,8 @@ public:
     using string_type     = typename vtm::traits::__convert_to_string<__my_type, string_t>::string_type;
     using char_t          = vtm::traits::string_char_type_t<string_t>;
     using display_t       = string_view_t;
-    using fps_factory_t   = TFps;
-    using fps_t           = typename TFps::type;
+    using fps_t           = TFps;
+    using fps_scalar_t    = typename TFps::type;
     using flags_t         = std::bitset<TC_FLAGS_SIZE>;
     using scalar_t        = std::uint8_t;
 
@@ -217,6 +228,23 @@ private:
 
 ///////////////////////////////////////////////////////////////////////////
 //
+//  @SECTION Private Static Methods
+//
+///////////////////////////////////////////////////////////////////////////
+
+private:
+    template<std::size_t N>
+    static constexpr auto __set_values_default(scalar_t(&values)[N])
+    {
+        for (std::size_t i = 0; i < N; ++i) {
+            values[i] = 0;
+        }
+    }
+
+///////////////////////////////////////////////////////////////////////////
+
+///////////////////////////////////////////////////////////////////////////
+//
 //  -- @SECTION Ctors, Dtors & Assignment --
 //
 ///////////////////////////////////////////////////////////////////////////
@@ -236,9 +264,9 @@ public:
         , _flags(tc._flags)
         , _values{UNWRAP_TCVALUES(tc, _values, TC_TOTAL_GROUPS)}
     {
-        tc._fps = {};
+        tc._fps = fps_t::default_value();
         tc._flags = {};
-        tc._values = {};
+        __set_values_default(tc._values);
     }
 
     constexpr __BasicTimecodeInt& operator=(const __BasicTimecodeInt& tc)
@@ -255,7 +283,7 @@ public:
 
     template<TimecodePrimitive V>
     explicit constexpr __BasicTimecodeInt(const V value,
-                                          const fps_t fps = fps_factory_t::default_value()) noexcept
+                                          const fps_scalar_t fps = fps_t::default_value()) noexcept
         : _fps(fps)
         , _flags({})
         , _values{}
@@ -278,14 +306,6 @@ public:
 ///////////////////////////////////////////////////////////////////////////
 
 public:
-    void reset() noexcept
-    {
-        this->_fps = fps_factory_t::default_value();
-        this->_flags = {};
-        for (std::size_t i = 0; i < TC_TOTAL_GROUPS; ++i)
-            this->_values[i] = 0;
-    }
-
     auto display() const -> display_t
     {
         VTM_TODO("not implemented");
@@ -344,7 +364,7 @@ private:
         static_assert(sizeof...(Is) == TC_TOTAL_GROUPS,
                       "index sequence of local input variable \"seq\" has more indexes than this->_values container, which will result in buffer overflow");
 
-        const auto fps_factor = fps_factory_t::to_unsigned(this->_fps);
+        const auto fps_factor = fps_t::to_unsigned(this->_fps);
         return (
             (this->_values[GET_TCGRP_SCALAR_START(Is)] * CALL_TCGRP_SCALAR_VALUE_MAPPING(Is, fps_factor))
              + ...
@@ -361,6 +381,19 @@ private:
 ///////////////////////////////////////////////////////////////////////////
 
 public:
+    void reset() noexcept
+    {
+        this->_flags = {};
+        __set_values_default(this->_values);
+    }
+
+    void reset_all() noexcept
+    {
+        this->_fps = fps_t::default_value();
+        this->_flags = {};
+        __set_values_default(this->_values);
+    }
+
     template<std::integral V>
     void set_ticks(const V ticks)
     {
@@ -373,19 +406,17 @@ private:
     constexpr void set_ticks_impl(T ticks, std::index_sequence<Is...> seq)
     {
         static_assert(sizeof...(Is) == TC_TOTAL_GROUPS,
-                      "index sequence of local input variable \"seq\" has more indexes than this->_values container, which will result in buffer overflow");
+                      "index sequence of local input variable \"seq\" has more indexes than "
+                      "this->_values container, which will result in buffer overflow");
 
-        const unsigned_type fps_factor = fps_factory_t::to_unsigned(this->_fps);
+        const unsigned_type fps_factor = fps_t::to_unsigned(this->_fps);
         const std::array indexes = { GET_TCGRP_SCALAR_START(Is) ... };
         const std::array factors = { CALL_TCGRP_SCALAR_VALUE_MAPPING(Is, fps_factor) ... };
+
         for (const auto& i : indexes) {
             if (ticks >= factors[i]) {
                 this->_values[i] = ticks / factors[i];
                 ticks %= factors[i];
-            }
-
-            else {
-                this->_values[i] = 0;
             }
         }
 
@@ -394,12 +425,12 @@ private:
     }
 
 public:
-    void set_fps(const fps_t fps) noexcept
+    void set_fps(const fps_scalar_t fps) noexcept
     {
         this->_fps = fps;
     }
 
-    fps_t fps() const noexcept
+    fps_scalar_t fps() const noexcept
     {
         return this->_fps;
     }
@@ -466,7 +497,7 @@ public:
 
     bool is_drop_frame() const noexcept
     {
-        return fps_factory_t::is_drop_frame(this->_fps);
+        return fps_t::is_drop_frame(this->_fps);
     }
 
     bool is_negative() const noexcept
@@ -529,7 +560,7 @@ private:
 
         static_assert(Index < TC_TOTAL_GROUPS, "index for static data member tick_groups must be less than TC_TOTAL_GROUPS");
         const unsigned_type tick_factor = CALL_TCGRP_SCALAR_VALUE_MAPPING(Index,
-                                                                          fps_factory_t::to_unsigned(this->_fps));
+                                                                          fps_t::to_unsigned(this->_fps));
         VTM_ASSERT(tick_factor > 0, "tick_factor evaluated to 0, which could result in unexpected results with multiplication by zero");
 
         return value * tick_factor;
@@ -563,7 +594,7 @@ private:
 ///////////////////////////////////////////////////////////////////////////
 
 private:
-    fps_t _fps = fps_factory_t::default_value();
+    fps_scalar_t _fps = fps_t::default_value();
     flags_t _flags = {};
     scalar_t _values[TC_TOTAL_GROUPS] = {};
 };
@@ -631,7 +662,10 @@ private:
 #undef TCSCALAR_1SEC_IN_SUBFRAMES
 
 #undef UNWRAP_TCVALUES
+#undef TCVALUES_DEFAULT_INITIALIZER
 #undef TCSTRING_DEFAULT_INITIALIZER
+
+#undef __TEMPLATE_TYPE
 
 
 } // @END OF namespace vtm::chrono::internal

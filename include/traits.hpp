@@ -282,6 +282,21 @@ struct __implicit_string_overloads : __implicit_type_overload<TString>,
     using string_view_type = typename __implicit_type_overload<TView>::type;
 };
 
+template<typename T, StringLike TString, StringViewLike TView>
+struct __implicit_string_overloads_crtp
+{
+    using type = std::remove_cvref_t<T>;
+    using reference = type&;
+    using const_reference = std::add_const_t<type>&;
+    using string_type = std::remove_cvref_t<TString>;
+    using string_view_type = std::remove_cvref_t<TView>;
+
+    operator string_type()            { return string_type(static_cast<type>(*this)); }
+    operator string_type() const      { return string_type(static_cast<const_reference>(*this)); }
+    operator string_view_type()       { return string_view_type(static_cast<type>(*this)); }
+    operator string_view_type() const { return string_view_type(static_cast<const_reference>(*this)); }
+};
+
 template<FloatConvertible T, std::floating_point F>
 struct __convert_to_float
 {

@@ -167,7 +167,7 @@ struct __FPSFormat
         fps_60,
         none
     };
-    
+
     using __my_type = __FPSFormat<TFloat, TInt>;
     using type = format;
     using float_type = TFloat;
