@@ -9,11 +9,14 @@
 
 // Standard headers
 #include <algorithm>
+#include <cassert>
+#include <cctype>
 #include <bitset>
 #include <concepts>
 #include <cstdint>
 #include <initializer_list>
 #include <limits>
+#include <string_view>
 #include <type_traits>
 #include <utility>
 
@@ -55,7 +58,7 @@ namespace vtm::chrono::internal {
 #define TCSTRING_FRAMES_START (TC_GROUP_WIDTH * 3 + 3)
 #define TCSTRING_SUBFRAMES_START (TC_GROUP_WIDTH * 4 + 4)
 #define TCSTRING_SIZE ((TC_GROUP_WIDTH * TC_TOTAL_GROUPS) + (TC_TOTAL_GROUPS - 1))
-#define TCSTRING_CHAR_OFFSET 48
+#define TCSTRING_CHAR_OFFSET '0'
 
 #define TCSCALAR_HRS_MAX 60
 #define TCSCALAR_MINS_MAX 60
@@ -134,17 +137,17 @@ static constexpr auto __init_tick_groups(std::tuple<Ts...> is, std::index_sequen
             std::get<Is>(is)[__TCGRP_SCALAR_IN_SUBFRAMES],
             std::get<Is>(is)[__TCGRP_STRING_START],
 
-            [=](std::unsigned_integral auto fps) -> std::uint64_t {
+            [=](std::unsigned_integral auto fps) constexpr -> std::uint64_t {
                 if (std::get<Is>(is)[__TCGRP_SCALAR_IN_SUBFRAMES] == 0) return TCSCALAR_SUBFRAMES_PER_FRAMES;
                 else if (std::get<Is>(is)[__TCGRP_SCALAR_IN_SUBFRAMES] == -1) return 1; 
                 return std::get<Is>(is)[__TCGRP_SCALAR_IN_SUBFRAMES] * fps;
             },
 
-            [=]<typename T>(T value) {
+            [=]<std::integral T>(T value) constexpr {
                 T str[TC_GROUP_WIDTH] = TCSTRING_GROUP_DEFAULT;
 
                 for (std::size_t i = 0; i < TC_GROUP_WIDTH; ++i) {
-                    str[TC_GROUP_WIDTH - i - 1] = value % 10 + '0';
+                    str[TC_GROUP_WIDTH - i - 1] = value % 10 + TCSTRING_CHAR_OFFSET;
                     value /= 10;
                 }
 
@@ -243,6 +246,7 @@ private:
 
 ///////////////////////////////////////////////////////////////////////////
 
+
 ///////////////////////////////////////////////////////////////////////////
 //
 //  -- @SECTION Ctors, Dtors & Assignment --
@@ -281,19 +285,67 @@ public:
         return *this;
     }
 
-    template<TimecodePrimitive V>
-    explicit constexpr __BasicTimecodeInt(const V value,
+    template<std::integral T>
+    explicit constexpr __BasicTimecodeInt(const T ticks,
                                           const fps_scalar_t fps = fps_t::default_value()) noexcept
         : _fps(fps)
         , _flags({})
         , _values{}
     {
-        VTM_TODO("not implemented");
+        this->set_ticks_impl(ticks,
+                             std::make_index_sequence<TC_TOTAL_GROUPS>{});
     }
 
-    explicit constexpr __BasicTimecodeInt(const string_view_t& tc)
+    explicit constexpr __BasicTimecodeInt(const string_view_t& tc,
+                                          const fps_scalar_t fps = fps_t::default_value())
+        : _fps(fps)
+        , _flags({})
+        , _values{}
     {
-        VTM_TODO("not implemented");
+        // validate tc_string
+        assert(this->is_valid_tcstring(tc) && "size of timecode string must be exactly the same as TCSTRING_SIZE");
+
+        // transfer tc_string data
+        scalar_t current = 0;
+        std::size_t group_index = 0;
+        std::size_t values_index = 0;
+        std::size_t decimal_pos = TC_GROUP_WIDTH - 1;
+
+        for (auto c : tc) {
+            if (group_index++ < TC_GROUP_WIDTH) {
+                current += (c - TCSTRING_CHAR_OFFSET) * (std::pow(10, decimal_pos--));
+            }
+
+            else {
+                this->_values[values_index++] = current;
+                current = 0;
+                group_index = 0;
+                decimal_pos = TC_GROUP_WIDTH - 1;
+            }
+        }
+
+        this->_values[values_index] = current;
+    }
+
+private:
+    inline bool is_valid_tcstring(const string_view_t& tc)
+    {
+        if (tc.length() != TCSTRING_SIZE) return false;
+
+        std::size_t group_index = 0;
+        for (auto c : tc) {
+            if (group_index++ < TC_GROUP_WIDTH) {
+                if (!std::isdigit(c)) return false;
+            }
+
+            else if (group_index == TC_GROUP_WIDTH) {
+                if (c != TCSTRING_COLON_DEFAULT || c != TCSTRING_COLON_DROPFRAME)
+                    return false;
+                group_index = 0;
+            }
+        }
+
+        return true;
     }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -403,16 +455,18 @@ private:
     template<std::size_t... Is>
     inline unsigned_type ticks_impl(std::index_sequence<Is...> seq) const noexcept
     {
-        return ((this->_values[Is]
-                * CALL_TCGRP_SCALAR_VALUE_MAPPING(Is, fps_t::to_unsigned(this->_fps)))
-                + ...);
+        return (
+            (this->_values[Is]
+            * CALL_TCGRP_SCALAR_VALUE_MAPPING(Is, fps_t::to_unsigned(this->_fps)))
+            + ...
+        );
     }
 
 public:
     template<std::integral V>
     void set_ticks(const V ticks)
     {
-        VTM_ASSERT(ticks >= 0, "cannot set ticks to value less than 0");
+        assert(ticks >= 0 && "cannot set ticks to value less than 0");
         this->set_ticks_impl(ticks, std::make_index_sequence<TC_TOTAL_GROUPS>{});
     }
 
@@ -570,13 +624,14 @@ private:
     template<std::size_t Index, std::integral T>
     constexpr auto to_ticks(T value) const -> vtm::traits::to_unsigned_t<T>
     {
-        if (value <= 0) return 0;
         // TODO: Set negative flag if value < 0 ???
+        if (value <= 0) return 0;
 
         static_assert(Index < TC_TOTAL_GROUPS, "index for static data member tick_groups must be less than TC_TOTAL_GROUPS");
         const unsigned_type tick_factor = CALL_TCGRP_SCALAR_VALUE_MAPPING(Index,
                                                                           fps_t::to_unsigned(this->_fps));
-        VTM_ASSERT(tick_factor > 0, "tick_factor evaluated to 0, which could result in unexpected results with multiplication by zero");
+
+        assert(tick_factor > 0 && "tick_factor evaluated to 0, which could result in unexpected results with multiplication by zero");
 
         return value * tick_factor;
     }
