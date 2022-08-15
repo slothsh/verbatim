@@ -16,6 +16,7 @@
 #include <cstdint>
 #include <initializer_list>
 #include <limits>
+#include <stdlib.h>
 #include <string_view>
 #include <type_traits>
 #include <utility>
@@ -52,6 +53,7 @@ namespace vtm::chrono::internal {
 #define TCSTRING_GROUP_DEFAULT { '0', '0' }
 #define TCSTRING_COLON_DEFAULT ':'
 #define TCSTRING_COLON_DROPFRAME ';'
+#define TCSTRING_COLON_SUBFRAMES '.'
 #define TCSTRING_HRS_START 0
 #define TCSTRING_MINS_START (TC_GROUP_WIDTH * 1 + 1)
 #define TCSTRING_SECS_START (TC_GROUP_WIDTH * 2 + 2)
@@ -70,7 +72,7 @@ namespace vtm::chrono::internal {
 #define TCSCALAR_SECS_START 2
 #define TCSCALAR_FRAMES_START 3
 #define TCSCALAR_SUBFRAMES_START 4
-#define TCSCALAR_SUBFRAMES_PER_FRAMES 100
+#define TCSCALAR_SUBFRAMES_PER_FRAMES TCSCALAR_SUBFRAMES_MAX
 
 #define TCSCALAR_HRS_TICKS (60 * 60)
 #define TCSCALAR_MINS_TICKS 60
@@ -112,12 +114,12 @@ namespace vtm::chrono::internal {
 #define TCVALUES_DEFAULT_INITIALIZER { 0, 0, 0, 0, 0 }
 
 // TODO: Make this accept variable size
-#define TCSTRING_DEFAULT_INITIALIZER {    \
-        '0', '0', TCSTRING_COLON_DEFAULT, \
-        '0', '0', TCSTRING_COLON_DEFAULT, \
-        '0', '0', TCSTRING_COLON_DEFAULT, \
-        '0', '0', TCSTRING_COLON_DEFAULT, \
-        '0', '0'                          \
+#define TCSTRING_DEFAULT_INITIALIZER {      \
+        '0', '0', TCSTRING_COLON_DEFAULT,   \
+        '0', '0', TCSTRING_COLON_DEFAULT,   \
+        '0', '0', TCSTRING_COLON_DEFAULT,   \
+        '0', '0', TCSTRING_COLON_SUBFRAMES, \
+        '0', '0'                            \
     }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -249,6 +251,23 @@ private:
 
 ///////////////////////////////////////////////////////////////////////////
 //
+// @SECTION String Representation Types
+//
+///////////////////////////////////////////////////////////////////////////
+
+private:
+    enum class __TCStringType : unsigned_type
+    {
+        smpte_standard,
+        smpte_subframes,
+        none
+    };
+
+///////////////////////////////////////////////////////////////////////////
+
+
+///////////////////////////////////////////////////////////////////////////
+//
 //  -- @SECTION Ctors, Dtors & Assignment --
 //
 ///////////////////////////////////////////////////////////////////////////
@@ -339,8 +358,14 @@ private:
             }
 
             else if (group_index == TC_GROUP_WIDTH) {
-                if (c != TCSTRING_COLON_DEFAULT || c != TCSTRING_COLON_DROPFRAME)
+                if (group_index == TC_TOTAL_GROUPS - 1) {
+                    if (c != TCSTRING_COLON_SUBFRAMES)
+                        return false;
+                }
+
+                else if (c != TCSTRING_COLON_DEFAULT || c != TCSTRING_COLON_DROPFRAME)
                     return false;
+
                 group_index = 0;
             }
         }
@@ -396,8 +421,6 @@ public:
 
     operator string_type() const
     {
-        /* VTM_TODO("not implemented"); */
-
         char_t tc_string[TCSTRING_SIZE] = TCSTRING_DEFAULT_INITIALIZER;
         this->fill_tcstring_array(tc_string, std::make_index_sequence<TC_TOTAL_GROUPS>{});
         string_t str(TCSTRING_SIZE, '\0');
@@ -679,6 +702,7 @@ private:
 #undef TCSTRING_SIZE
 #undef TCSTRING_COLON_DEFAULT
 #undef TCSTRING_COLON_DROPFRAME
+#undef TCSTRING_COLON_SUBFRAMES
 #undef TCSTRING_HRS_START
 #undef TCSTRING_MINS_START
 #undef TCSTRING_SECS_START

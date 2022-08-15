@@ -125,8 +125,8 @@ TEST_CASE("vtm::timecode initialization", "[timecode][chrono][initialization]")
 
     SECTION("string view subsumption initialization"){
         // source object
-        vtm::timecode tc1{ "00:00:00:00:00" };
-        vtm::timecode tc2{ "12:34:56:12:34" };
+        vtm::timecode tc1{ "00:00:00:00.00" };
+        vtm::timecode tc2{ "12:34:56:12.34" };
 
         // pre-conditions for valid copy construction
         INFO("tc1 fps: "       << tc1.fps());       REQUIRE(tc1.fps()       == vtm::fps::default_value());
@@ -336,7 +336,7 @@ TEST_CASE("vtm::timecode string conversions", "[chrono][timecode][conversion][st
         INFO("tc1 fps: "    << tc1.fps()); REQUIRE(tc1.fps() == vtm::fps::default_value());
 
         // conditions for test
-        INFO("tc1 string: " << str1);      CHECK(str1 == "00:00:00:00:00");
+        INFO("tc1 string: " << str1);      CHECK(str1 == "00:00:00:00.00");
     }
 
     SECTION("string groups correspond to scalar values") {
@@ -353,7 +353,7 @@ TEST_CASE("vtm::timecode string conversions", "[chrono][timecode][conversion][st
         tc1.set_frames(12);
         tc1.set_subframes(69);
         std::string str1 = tc1;
-        INFO("tc2 string: " << str1);      REQUIRE(str1 == "59:42:31:12:69");
+        INFO("tc2 string: " << str1);      REQUIRE(str1 == "59:42:31:12.69");
     }
 
     SECTION("string groups correspond to cascaded scalar values") {
@@ -371,6 +371,6 @@ TEST_CASE("vtm::timecode string conversions", "[chrono][timecode][conversion][st
         tc1.set_frames(9 * 25 + 12);     // 9 seconds , 12 frames
         tc1.set_subframes(4 * 100 + 69); // 4 frames  , 69 subframes
         std::string str2 = tc1;
-        INFO("tc2 string: " << str2);      REQUIRE(str2 == "02:06:09:04:69");
+        INFO("tc2 string: " << str2);      REQUIRE(str2 == "02:06:09:04.69");
     }
 }
