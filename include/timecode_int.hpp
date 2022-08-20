@@ -725,10 +725,12 @@ public:
         requires std::is_same_v<Rhs, __my_type> || std::is_integral_v<Rhs>
     friend constexpr void operator+=(__my_type& lhs, const Rhs& rhs)
     {
+        // TODO: handle bounds
         if constexpr (std::is_same_v<Rhs, __my_type>) {
             lhs.set_ticks(lhs.ticks() + rhs.ticks());
         }
 
+        // TODO: handle bounds
         else if constexpr (std::is_integral_v<Rhs>) {
             lhs.set_ticks(lhs.ticks() + rhs);
         }
@@ -738,12 +740,13 @@ public:
         requires std::is_same_v<Rhs, __my_type> || std::is_integral_v<Rhs>
     friend constexpr __my_type& operator-=(__my_type& lhs, const Rhs& rhs)
     {
+        // TODO: handle bounds
         if constexpr (std::is_same_v<Rhs, __my_type>) {
-            fmt::print("value1: {}\tvalue2: {}\n\n", lhs.ticks(), rhs.ticks());
             lhs.set_ticks(lhs.ticks() - rhs.ticks());
             return lhs;
         }
 
+        // TODO: handle bounds
         else if constexpr (std::is_integral_v<Rhs>) {
             lhs.set_ticks(lhs.ticks() - rhs);
             return lhs;
@@ -752,12 +755,54 @@ public:
 
     template<typename Rhs>
         requires std::is_same_v<Rhs, __my_type> || std::is_integral_v<Rhs>
+    friend constexpr __my_type& operator*=(__my_type& lhs, const Rhs& rhs)
+    {
+        // TODO: handle bounds
+        if constexpr (std::is_same_v<Rhs, __my_type>) {
+            lhs.set_ticks(lhs.ticks() * rhs.ticks());
+            return lhs;
+        }
+
+        // TODO: handle bounds
+        else if constexpr (std::is_integral_v<Rhs>) {
+            lhs.set_ticks(lhs.ticks() * rhs);
+            return lhs;
+        }
+    }
+
+    template<typename Rhs>
+        requires std::is_same_v<Rhs, __my_type> || std::is_integral_v<Rhs>
+    friend constexpr __my_type& operator/=(__my_type& lhs, const Rhs& rhs)
+    {
+        // TODO: handle bounds
+        if constexpr (std::is_same_v<Rhs, __my_type>) {
+            assert(rhs.ticks() > 0
+                   && "division by zero in __BasicTimecode expression will result in undefined behaviour");
+
+            lhs.set_ticks(lhs.ticks() / rhs.ticks());
+            return lhs;
+        }
+
+        // TODO: handle bounds
+        else if constexpr (std::is_integral_v<Rhs>) {
+            assert(rhs.ticks() > 0
+                   && "division by zero in __BasicTimecode expression will result in undefined behaviour");
+
+            lhs.set_ticks(lhs.ticks() / rhs);
+            return lhs;
+        }
+    }
+
+    template<typename Rhs>
+        requires std::is_same_v<Rhs, __my_type> || std::is_integral_v<Rhs>
     friend constexpr __my_type operator+(const __my_type& lhs, const Rhs& rhs)
     {
+        // TODO: handle bounds
         if constexpr (std::is_same_v<Rhs, __my_type>) {
             return __my_type{ lhs.ticks() + rhs.ticks() };
         }
 
+        // TODO: handle bounds
         else if constexpr (std::is_integral_v<Rhs>) {
             return __my_type{ lhs.ticks() + rhs };
         }
@@ -767,12 +812,50 @@ public:
         requires std::is_same_v<Rhs, __my_type> || std::is_integral_v<Rhs>
     friend constexpr __my_type operator-(const __my_type& lhs, const Rhs& rhs)
     {
+        // TODO: handle bounds
         if constexpr (std::is_same_v<Rhs, __my_type>) {
             return __my_type{ lhs.ticks() - rhs.ticks() };
         }
 
+        // TODO: handle bounds
         else if constexpr (std::is_integral_v<Rhs>) {
             return __my_type{ lhs.ticks() - rhs };
+        }
+    }
+
+    template<typename Rhs>
+        requires std::is_same_v<Rhs, __my_type> || std::is_integral_v<Rhs>
+    friend constexpr __my_type operator*(const __my_type& lhs, const Rhs& rhs)
+    {
+        // TODO: handle bounds
+        if constexpr (std::is_same_v<Rhs, __my_type>) {
+            return __my_type{ lhs.ticks() * rhs.ticks() };
+        }
+
+        // TODO: handle bounds
+        else if constexpr (std::is_integral_v<Rhs>) {
+            return __my_type{ lhs.ticks() * rhs };
+        }
+    }
+
+    template<typename Rhs>
+        requires std::is_same_v<Rhs, __my_type> || std::is_integral_v<Rhs>
+    friend constexpr __my_type operator/(const __my_type& lhs, const Rhs& rhs)
+    {
+        // TODO: handle bounds
+        if constexpr (std::is_same_v<Rhs, __my_type>) {
+            assert(rhs.ticks() > 0
+                   && "division by zero in __BasicTimecode expression will result in undefined behaviour");
+
+            return __my_type{ lhs.ticks() / rhs.ticks() };
+        }
+
+        // TODO: handle bounds
+        else if constexpr (std::is_integral_v<Rhs>) {
+            assert(rhs > 0
+                   && "division by zero in __BasicTimecode expression will result in undefined behaviour");
+
+            return __my_type{ lhs.ticks() / rhs };
         }
     }
 
