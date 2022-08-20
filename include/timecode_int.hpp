@@ -10,6 +10,7 @@
 // Standard headers
 #include <algorithm>
 #include <cassert>
+#include <compare>
 #include <cstring>
 #include <cctype>
 #include <bitset>
@@ -675,30 +676,80 @@ public:
 ///////////////////////////////////////////////////////////////////////////
 
 public:
-    friend bool operator==(const __my_type& lhs, const __my_type& rhs)
+    template<typename Rhs>
+        requires std::is_same_v<Rhs, __my_type> || std::is_integral_v<Rhs>
+    friend constexpr bool operator==(const __my_type& lhs, const Rhs& rhs)
     {
-        return equality_op_impl(lhs,
-                                    rhs,
-                                    std::make_index_sequence<TC_TOTAL_GROUPS>{});
+        if constexpr (std::is_same_v<Rhs, __my_type>)
+            return lhs.ticks() == rhs.ticks();
+    
+        else if constexpr (std::is_integral_v<Rhs>)
+            return lhs.ticks() == rhs;
+    }
+
+    template<typename Rhs>
+        requires std::is_same_v<Rhs, __my_type> || std::is_integral_v<Rhs>
+    friend constexpr auto operator<=>(const __my_type& lhs, const Rhs& rhs)
+    {
+        if constexpr (std::is_same_v<Rhs, __my_type>) {
+            /* return lhs_value <=> rhs_value; */
+            if (lhs.ticks() == rhs.ticks()) return std::strong_ordering::equal;
+            if (lhs.ticks() < rhs.ticks()) return std::strong_ordering::less;
+            if (lhs.ticks() > rhs.ticks()) return std::strong_ordering::greater;
+            return std::strong_ordering::equivalent;
+        }
+
+        else if constexpr (std::is_integral_v<Rhs>) {
+            /* return lhs_value <=> rhs; */
+            if (lhs.ticks() == rhs) return std::strong_ordering::equal;
+            if (lhs.ticks() < rhs) return std::strong_ordering::less;
+            if (lhs.ticks() > rhs) return std::strong_ordering::greater;
+            return std::strong_ordering::equivalent;
+        }
     }
 
 private:
-    template<std::size_t... Is>
+    template<typename Rhs, std::size_t... Is>
     friend constexpr bool equality_op_impl(const __my_type& lhs,
-                                    const __my_type& rhs,
-                                    std::index_sequence<Is...> seq)
+                                           Rhs&& rhs, // TODO: pass by value if integral type
+                                           std::index_sequence<Is...> seq)
     {
         static_assert(sizeof...(Is) == TC_TOTAL_GROUPS,
                       "total size of indexes in index sequence must be equal to TC_TOTAL_GROUPS");
 
-        const auto fps_factor_lhs = fps_t::to_unsigned(lhs._fps);
-        const auto fps_factor_rhs = fps_t::to_unsigned(rhs._fps);
+        if constexpr (std::is_same_v<Rhs, __my_type>)
+            return lhs.ticks() == rhs.ticks();
 
-        const auto lhs_value = ((lhs._values[Is] * CALL_TCGRP_SCALAR_VALUE_MAPPING(Is, fps_factor_lhs)) + ...);
-        const auto rhs_value = ((rhs._values[Is] * CALL_TCGRP_SCALAR_VALUE_MAPPING(Is, fps_factor_rhs)) + ...);
-
-        return lhs_value == rhs_value;
+        else if constexpr (std::is_integral_v<__my_type>)
+            return lhs.ticks() == rhs;
     }
+
+    template<typename Rhs, std::size_t... Is>
+    friend constexpr auto comparison_op_impl(const __my_type& lhs,
+                                             const Rhs& rhs,
+                                             std::index_sequence<Is...>seq)
+    {
+        if constexpr (std::is_same_v<Rhs, __my_type>) {
+            /* return lhs_value <=> rhs_value; */
+            if (lhs.ticks() == rhs.ticks()) return std::strong_ordering::equal;
+            if (lhs.ticks() < rhs.ticks()) return std::strong_ordering::less;
+            if (lhs.ticks() > rhs.ticks()) return std::strong_ordering::greater;
+            return std::strong_ordering::equivalent;
+        }
+
+        else if constexpr (std::is_integral_v<Rhs>) {
+            const auto fps_factor_lhs = fps_t::to_unsigned(lhs._fps);
+
+            const auto lhs_value = ((lhs._values[Is] * CALL_TCGRP_SCALAR_VALUE_MAPPING(Is, fps_factor_lhs)) + ...);
+
+            /* return lhs_value <=> rhs; */
+            if (lhs.ticks() == rhs) return std::strong_ordering::equal;
+            if (lhs.ticks() < rhs) return std::strong_ordering::less;
+            if (lhs.ticks() > rhs) return std::strong_ordering::greater;
+            return std::strong_ordering::equivalent;
+        }
+    }
+
 
 ///////////////////////////////////////////////////////////////////////////
 

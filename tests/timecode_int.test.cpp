@@ -457,7 +457,7 @@ TEST_CASE("vtm::timecode string conversions", "[chrono][timecode][conversion][st
     }
 }
 
-TEST_CASE("vtm::timecode equality & comparison", "[timecode][chrono][comparison][equality]")
+TEST_CASE("vtm::timecode equality & comparison", "[timecode][chrono][comparison][equality][ordering]")
 {
     SECTION("equivalent timecode objects with same fps returns true") {
         // default objects
@@ -515,5 +515,52 @@ TEST_CASE("vtm::timecode equality & comparison", "[timecode][chrono][comparison]
         // conditions for test
         INFO("tc1 == tc2: "     << (tc1 == tc2)); CHECK_FALSE(tc1 == tc2);
         INFO("tc1 != tc2: "     << (tc1 != tc2)); CHECK(tc1 != tc2);
+    }
+
+    SECTION("equivalent timecode object and integral returns true") {
+        // default objects
+        vtm::timecode tc1{"12:34:56:12.34"};
+        int _int1 = (12 * 60 * 60 * 25 * 100) +
+                    (34 * 60 * 25 * 100) +
+                    (56 * 25 * 100) +
+                    (12 * 100) + 34;
+    
+        // pre-conditions for test
+        INFO("tc1 fps: "      << tc1.fps()); REQUIRE(tc1.fps() == vtm::fps::default_value());
+    
+        // conditions for test
+        INFO("tc1 ticks: "    << (tc1.ticks()));
+        INFO("tc1 == _int1: " << (tc1 == _int1)); CHECK(tc1 == _int1);
+        INFO("tc1 != _int1: " << (tc1 != _int1)); CHECK_FALSE(tc1 != _int1);
+    }
+    
+    SECTION("timecode objects with same fps returns correct ordering") {
+        // default objects
+        vtm::timecode tc1{"12:34:56:12.34"};
+        vtm::timecode tc2{"12:34:56:12.34"};
+        vtm::timecode tc3{"00:34:56:12.34"};
+        vtm::timecode tc4{"34:34:56:12.34"};
+    
+        // pre-conditions for test
+        INFO("tc1 fps: "      << tc1.fps()); REQUIRE(tc1.fps() == vtm::fps::default_value());
+        INFO("tc2 fps: "      << tc2.fps()); REQUIRE(tc2.fps() == vtm::fps::default_value());
+        INFO("tc3 fps: "      << tc3.fps()); REQUIRE(tc3.fps() == vtm::fps::default_value());
+        INFO("tc4 fps: "      << tc4.fps()); REQUIRE(tc4.fps() == vtm::fps::default_value());
+    
+        // conditions for test
+        INFO("tc1 <= tc2: " << (tc1 <= tc2)); CHECK(tc1 <= tc2);
+        INFO("tc1 >= tc2: " << (tc1 >= tc2)); CHECK(tc1 >= tc2);
+        INFO("tc1 < tc2: "  << (tc1 < tc2));  CHECK_FALSE(tc1 < tc2);
+        INFO("tc1 > tc2: "  << (tc1 > tc2));  CHECK_FALSE(tc1 > tc2);
+    
+        INFO("tc1 <= tc3: " << (tc1 <= tc3)); CHECK_FALSE(tc1 <= tc3);
+        INFO("tc1 >= tc3: " << (tc1 >= tc3)); CHECK(tc1 >= tc3);
+        INFO("tc1 < tc3: "  << (tc1 < tc3));  CHECK_FALSE(tc1 < tc3);
+        INFO("tc1 > tc3: "  << (tc1 > tc3));  CHECK(tc1 > tc3);
+    
+        INFO("tc1 <= tc4: " << (tc1 <= tc4)); CHECK(tc1 <= tc4);
+        INFO("tc1 >= tc4: " << (tc1 >= tc4)); CHECK_FALSE(tc1 >= tc4);
+        INFO("tc1 < tc4: "  << (tc1 < tc4));  CHECK(tc1 < tc4);
+        INFO("tc1 > tc4: "  << (tc1 > tc4));  CHECK_FALSE(tc1 > tc4);
     }
 }
