@@ -266,6 +266,53 @@ TEST_CASE("vtm::timecode tick value representation", "[chrono][timecode][number]
     }
 }
 
+TEST_CASE("vtm::timecode integral assignment", "[chrono][timecode][conversion][number]")
+{
+    SECTION("assignment to signed types return correct tick values") {
+         // default objects
+        vtm::timecode tc1{};
+        vtm::timecode tc2{};
+        vtm::timecode tc3{};
+        vtm::timecode tc4{};
+
+        tc1 = (12 * 60 * 60 * 25 * 100) + (34 * 60 * 25 * 100) + (56 * 25 * 100) + (12 * 100) + (34);
+        tc2 = (12 * 60 * 60 * 25 * 100) + (34 * 60 * 25 * 100) + (56 * 25 * 100) + (12 * 100) + (34);
+        tc3 = (12 * 60 * 60 * 25 * 100) + (34 * 60 * 25 * 100) + (56 * 25 * 100) + (12 * 100) + (34);
+        tc4 = (12 * 60 * 60 * 25 * 100) + (34 * 60 * 25 * 100) + (56 * 25 * 100) + (12 * 100) + (34);
+
+        // pre-conditions for test
+        INFO("tc1 fps: "    << tc1.fps()); REQUIRE(tc1.fps() == vtm::fps::default_value());
+        INFO("tc2 fps: "    << tc2.fps()); REQUIRE(tc2.fps() == vtm::fps::default_value());
+        INFO("tc3 fps: "    << tc3.fps()); REQUIRE(tc3.fps() == vtm::fps::default_value());
+        INFO("tc4 fps: "    << tc4.fps()); REQUIRE(tc4.fps() == vtm::fps::default_value());
+
+        // conditions for test
+        INFO("tc1 hours: "     << tc1.hours());     CHECK(tc1.hours()     == 12);
+        INFO("tc1 minutes: "   << tc1.minutes());   CHECK(tc1.minutes()   == 34);
+        INFO("tc1 seconds: "   << tc1.seconds());   CHECK(tc1.seconds()   == 56);
+        INFO("tc1 frames: "    << tc1.frames());    CHECK(tc1.frames()    == 12);
+        INFO("tc1 subframes: " << tc1.subframes()); CHECK(tc1.subframes() == 34);
+
+        INFO("tc2 hours: "     << tc2.hours());     CHECK(tc2.hours()     == 12);
+        INFO("tc2 minutes: "   << tc2.minutes());   CHECK(tc2.minutes()   == 34);
+        INFO("tc2 seconds: "   << tc2.seconds());   CHECK(tc2.seconds()   == 56);
+        INFO("tc2 frames: "    << tc2.frames());    CHECK(tc2.frames()    == 12);
+        INFO("tc2 subframes: " << tc2.subframes()); CHECK(tc2.subframes() == 34);
+
+        INFO("tc3 hours: "     << tc3.hours());     CHECK(tc3.hours()     == 12);
+        INFO("tc3 minutes: "   << tc3.minutes());   CHECK(tc3.minutes()   == 34);
+        INFO("tc3 seconds: "   << tc3.seconds());   CHECK(tc3.seconds()   == 56);
+        INFO("tc3 frames: "    << tc3.frames());    CHECK(tc3.frames()    == 12);
+        INFO("tc3 subframes: " << tc3.subframes()); CHECK(tc3.subframes() == 34);
+
+        INFO("tc4 hours: "     << tc4.hours());     CHECK(tc4.hours()     == 12);
+        INFO("tc4 minutes: "   << tc4.minutes());   CHECK(tc4.minutes()   == 34);
+        INFO("tc4 seconds: "   << tc4.seconds());   CHECK(tc4.seconds()   == 56);
+        INFO("tc4 frames: "    << tc4.frames());    CHECK(tc4.frames()    == 12);
+        INFO("tc4 subframes: " << tc4.subframes()); CHECK(tc4.subframes() == 34);
+    }
+}
+
 TEST_CASE("vtm::timecode signed type conversions", "[chrono][timecode][conversion][number]")
 {
     SECTION("signed type conversion returns correct ticks for each TC group") {
@@ -372,5 +419,40 @@ TEST_CASE("vtm::timecode string conversions", "[chrono][timecode][conversion][st
         tc1.set_subframes(4 * 100 + 69); // 4 frames  , 69 subframes
         std::string str2 = tc1;
         INFO("tc2 string: " << str2);      REQUIRE(str2 == "02:06:09:04.69");
+    }
+
+    SECTION("string assignment returns valid timecode") {
+         // default objects
+        vtm::timecode tc1{};
+        vtm::timecode tc2{};
+        vtm::timecode tc3{};
+
+        tc1 = "12:34:56:12.34";
+        tc2 = std::string{ "12:34:56:12.34" };
+        tc3 = std::string_view{ "12:34:56:12.34" };
+
+        // pre-conditions for test
+        INFO("tc1 fps: "    << tc1.fps()); REQUIRE(tc1.fps() == vtm::fps::default_value());
+        INFO("tc2 fps: "    << tc2.fps()); REQUIRE(tc2.fps() == vtm::fps::default_value());
+        INFO("tc3 fps: "    << tc3.fps()); REQUIRE(tc3.fps() == vtm::fps::default_value());
+
+        // conditions for test
+        INFO("tc1 hours: "     << tc1.hours());     CHECK(tc1.hours()     == 12);
+        INFO("tc1 minutes: "   << tc1.minutes());   CHECK(tc1.minutes()   == 34);
+        INFO("tc1 seconds: "   << tc1.seconds());   CHECK(tc1.seconds()   == 56);
+        INFO("tc1 frames: "    << tc1.frames());    CHECK(tc1.frames()    == 12);
+        INFO("tc1 subframes: " << tc1.subframes()); CHECK(tc1.subframes() == 34);
+
+        INFO("tc2 hours: "     << tc2.hours());     CHECK(tc2.hours()     == 12);
+        INFO("tc2 minutes: "   << tc2.minutes());   CHECK(tc2.minutes()   == 34);
+        INFO("tc2 seconds: "   << tc2.seconds());   CHECK(tc2.seconds()   == 56);
+        INFO("tc2 frames: "    << tc2.frames());    CHECK(tc2.frames()    == 12);
+        INFO("tc2 subframes: " << tc2.subframes()); CHECK(tc2.subframes() == 34);
+
+        INFO("tc3 hours: "     << tc3.hours());     CHECK(tc3.hours()     == 12);
+        INFO("tc3 minutes: "   << tc3.minutes());   CHECK(tc3.minutes()   == 34);
+        INFO("tc3 seconds: "   << tc3.seconds());   CHECK(tc3.seconds()   == 56);
+        INFO("tc3 frames: "    << tc3.frames());    CHECK(tc3.frames()    == 12);
+        INFO("tc3 subframes: " << tc3.subframes()); CHECK(tc3.subframes() == 34);
     }
 }

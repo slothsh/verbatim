@@ -10,10 +10,12 @@
 // Standard headers
 #include <algorithm>
 #include <cassert>
+#include <cstring>
 #include <cctype>
 #include <bitset>
 #include <concepts>
 #include <cstdint>
+#include <cstring>
 #include <initializer_list>
 #include <limits>
 #include <stdlib.h>
@@ -73,6 +75,8 @@ namespace vtm::chrono::internal {
 #define TCSCALAR_FRAMES_START 3
 #define TCSCALAR_SUBFRAMES_START 4
 #define TCSCALAR_SUBFRAMES_PER_FRAMES TCSCALAR_SUBFRAMES_MAX
+#define TCSCALAR_LOWERBOUND() 0
+#define TCSCALAR_UPPERBOUND(__TScalar) std::numeric_limits<__TScalar>::max()
 
 #define TCSCALAR_HRS_TICKS (60 * 60)
 #define TCSCALAR_MINS_TICKS 60
@@ -294,13 +298,22 @@ public:
 
     constexpr __BasicTimecodeInt& operator=(const __BasicTimecodeInt& tc)
     {
-        *this = __BasicTimecodeInt{ tc };
+        this->_fps = tc._fps;
+        this->_flags = tc._flags;
+        this->set_values(tc._values);
         return *this;
     }
 
     constexpr __BasicTimecodeInt& operator=(__BasicTimecodeInt&& tc) noexcept
     {
-        *this = __BasicTimecodeInt{ std::move(tc) };
+        this->_fps = tc._fps;
+        this->_flags = tc._flags;
+        this->set_values(tc._values);
+        
+        tc._fps = fps_t::default_value();
+        tc._flags = {};
+        __set_values_default(tc._values);
+
         return *this;
     }
 
@@ -315,7 +328,7 @@ public:
                              std::make_index_sequence<TC_TOTAL_GROUPS>{});
     }
 
-    explicit constexpr __BasicTimecodeInt(const string_view_t& tc,
+    explicit constexpr __BasicTimecodeInt(const string_view_t tc,
                                           const fps_scalar_t fps = fps_t::default_value())
         : _fps(fps)
         , _flags({})
@@ -347,7 +360,7 @@ public:
     }
 
 private:
-    inline bool is_valid_tcstring(const string_view_t& tc)
+    inline bool is_valid_tcstring(const string_view_t tc)
     {
         if (tc.length() != TCSTRING_SIZE) return false;
 
@@ -456,19 +469,28 @@ private:
 ///////////////////////////////////////////////////////////////////////////
 
 public:
-    void reset() noexcept
+    inline void reset() noexcept
     {
         this->_flags = {};
         __set_values_default(this->_values);
     }
 
-    void reset_all() noexcept
+    inline void reset_all() noexcept
     {
         this->_fps = fps_t::default_value();
         this->_flags = {};
         __set_values_default(this->_values);
     }
 
+private:
+    inline void set_values(scalar_t(&tc_values)[TC_TOTAL_GROUPS]) noexcept
+    {
+        for (std::size_t i = 0; i < TC_TOTAL_GROUPS; ++i) {
+            this->_values[i] = tc_values[i];
+        }
+    }
+
+public:
     unsigned_type ticks() const noexcept
     {
         return this->ticks_impl(std::make_index_sequence<TC_TOTAL_GROUPS>{});
@@ -595,6 +617,49 @@ public:
     bool is_negative() const noexcept
     {
         VTM_TODO("not implemented");
+    }
+
+///////////////////////////////////////////////////////////////////////////
+
+
+///////////////////////////////////////////////////////////////////////////
+//
+//  @SECTION Assignment Overloads
+//
+///////////////////////////////////////////////////////////////////////////
+
+public:
+    template<std::integral T>
+    constexpr void operator=(T&& ticks)
+    {
+        assert(TCSCALAR_LOWERBOUND() < ticks && ticks < TCSCALAR_UPPERBOUND(T)
+               && "value of ticks in integral assignment operator conversion is out of bounds");
+
+        *this = __my_type{std::forward<T>(ticks)};
+    }
+
+    void operator=(const char_t* tc)
+    {
+        std::size_t length = std::strlen(tc);
+        assert(length == TCSTRING_SIZE || length == TCSTRING_SIZE - TC_GROUP_WIDTH - 1
+               && "size of const char_t* in string assignment operator must be size of a valid tc string");
+
+        *this = __my_type{tc};
+    }
+
+    template<std::size_t N>
+    constexpr void operator=(const char_t(tc)[N])
+    {
+        static_assert(N == TCSTRING_SIZE + 1 || N == TCSTRING_SIZE - TC_GROUP_WIDTH,
+                      "size of const char_t array in string assignment operator must be size of a valid tc string");
+
+        *this = __my_type{tc};
+    }
+
+    template<vtm::traits::StringLike T>
+    constexpr void operator=(T&& tc)
+    {
+        *this = __my_type{std::forward<T>(tc)};
     }
 
 ///////////////////////////////////////////////////////////////////////////
