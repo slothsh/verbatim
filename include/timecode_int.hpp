@@ -29,6 +29,7 @@
 #include "timecode_common.hpp"
 #include "traits.hpp"
 #include "utility.hpp"
+#include <fmt/core.h>
 
 ///////////////////////////////////////////////////////////////////////////
 
@@ -533,13 +534,15 @@ private:
 
         for (const auto& i : indexes) {
             if (ticks >= factors[i]) {
+                // TODO: bounds checking
                 this->_values[i] = ticks / factors[i];
                 ticks %= factors[i];
             }
+
+            else if (ticks == 0) this->_values[i] = ticks;
         }
 
         // TODO: handle remainder of ticks > 0
-        this->_values[TCSCALAR_SUBFRAMES_START] += ticks;
     }
 
 public:
@@ -708,50 +711,73 @@ public:
         }
     }
 
-private:
-    template<typename Rhs, std::size_t... Is>
-    friend constexpr bool equality_op_impl(const __my_type& lhs,
-                                           Rhs&& rhs, // TODO: pass by value if integral type
-                                           std::index_sequence<Is...> seq)
-    {
-        static_assert(sizeof...(Is) == TC_TOTAL_GROUPS,
-                      "total size of indexes in index sequence must be equal to TC_TOTAL_GROUPS");
-
-        if constexpr (std::is_same_v<Rhs, __my_type>)
-            return lhs.ticks() == rhs.ticks();
-
-        else if constexpr (std::is_integral_v<__my_type>)
-            return lhs.ticks() == rhs;
-    }
-
-    template<typename Rhs, std::size_t... Is>
-    friend constexpr auto comparison_op_impl(const __my_type& lhs,
-                                             const Rhs& rhs,
-                                             std::index_sequence<Is...>seq)
-    {
-        if constexpr (std::is_same_v<Rhs, __my_type>) {
-            /* return lhs_value <=> rhs_value; */
-            if (lhs.ticks() == rhs.ticks()) return std::strong_ordering::equal;
-            if (lhs.ticks() < rhs.ticks()) return std::strong_ordering::less;
-            if (lhs.ticks() > rhs.ticks()) return std::strong_ordering::greater;
-            return std::strong_ordering::equivalent;
-        }
-
-        else if constexpr (std::is_integral_v<Rhs>) {
-            const auto fps_factor_lhs = fps_t::to_unsigned(lhs._fps);
-
-            const auto lhs_value = ((lhs._values[Is] * CALL_TCGRP_SCALAR_VALUE_MAPPING(Is, fps_factor_lhs)) + ...);
-
-            /* return lhs_value <=> rhs; */
-            if (lhs.ticks() == rhs) return std::strong_ordering::equal;
-            if (lhs.ticks() < rhs) return std::strong_ordering::less;
-            if (lhs.ticks() > rhs) return std::strong_ordering::greater;
-            return std::strong_ordering::equivalent;
-        }
-    }
+///////////////////////////////////////////////////////////////////////////
 
 
 ///////////////////////////////////////////////////////////////////////////
+//
+//  @SECTION Arithmetic Operations
+//
+///////////////////////////////////////////////////////////////////////////
+
+public:
+    template<typename Rhs>
+        requires std::is_same_v<Rhs, __my_type> || std::is_integral_v<Rhs>
+    friend constexpr void operator+=(__my_type& lhs, const Rhs& rhs)
+    {
+        if constexpr (std::is_same_v<Rhs, __my_type>) {
+            lhs.set_ticks(lhs.ticks() + rhs.ticks());
+        }
+
+        else if constexpr (std::is_integral_v<Rhs>) {
+            lhs.set_ticks(lhs.ticks() + rhs);
+        }
+    }
+
+    template<typename Rhs>
+        requires std::is_same_v<Rhs, __my_type> || std::is_integral_v<Rhs>
+    friend constexpr __my_type& operator-=(__my_type& lhs, const Rhs& rhs)
+    {
+        if constexpr (std::is_same_v<Rhs, __my_type>) {
+            fmt::print("value1: {}\tvalue2: {}\n\n", lhs.ticks(), rhs.ticks());
+            lhs.set_ticks(lhs.ticks() - rhs.ticks());
+            return lhs;
+        }
+
+        else if constexpr (std::is_integral_v<Rhs>) {
+            lhs.set_ticks(lhs.ticks() - rhs);
+            return lhs;
+        }
+    }
+
+    template<typename Rhs>
+        requires std::is_same_v<Rhs, __my_type> || std::is_integral_v<Rhs>
+    friend constexpr __my_type operator+(const __my_type& lhs, const Rhs& rhs)
+    {
+        if constexpr (std::is_same_v<Rhs, __my_type>) {
+            return __my_type{ lhs.ticks() + rhs.ticks() };
+        }
+
+        else if constexpr (std::is_integral_v<Rhs>) {
+            return __my_type{ lhs.ticks() + rhs };
+        }
+    }
+
+    template<typename Rhs>
+        requires std::is_same_v<Rhs, __my_type> || std::is_integral_v<Rhs>
+    friend constexpr __my_type operator-(const __my_type& lhs, const Rhs& rhs)
+    {
+        if constexpr (std::is_same_v<Rhs, __my_type>) {
+            return __my_type{ lhs.ticks() - rhs.ticks() };
+        }
+
+        else if constexpr (std::is_integral_v<Rhs>) {
+            return __my_type{ lhs.ticks() - rhs };
+        }
+    }
+
+///////////////////////////////////////////////////////////////////////////
+
 
 ///////////////////////////////////////////////////////////////////////////
 //

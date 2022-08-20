@@ -564,3 +564,109 @@ TEST_CASE("vtm::timecode equality & comparison", "[timecode][chrono][comparison]
         INFO("tc1 > tc4: "  << (tc1 > tc4));  CHECK_FALSE(tc1 > tc4);
     }
 }
+
+TEST_CASE("vtm::timecode arithmetic operations", "[timecode][chrono][arithmetic]")
+{
+    SECTION("addition of timecode objects with same fps yields correct results") {
+        // default objects
+        vtm::timecode tc1{"00:00:00:00.00"};
+        vtm::timecode tc2{"00:00:00:00.42"};
+        vtm::timecode tc3{"00:00:00:12.00"};
+        vtm::timecode tc4{"00:00:42:00.00"};
+        vtm::timecode tc5{"00:42:00:00.00"};
+        vtm::timecode tc6{"42:00:00:00.00"};
+    
+        // pre-conditions for test
+        INFO("tc1 fps: "      << tc1.fps()); REQUIRE(tc1.fps() == vtm::fps::default_value());
+        INFO("tc2 fps: "      << tc2.fps()); REQUIRE(tc2.fps() == vtm::fps::default_value());
+        INFO("tc3 fps: "      << tc3.fps()); REQUIRE(tc3.fps() == vtm::fps::default_value());
+        INFO("tc4 fps: "      << tc4.fps()); REQUIRE(tc4.fps() == vtm::fps::default_value());
+        INFO("tc5 fps: "      << tc5.fps()); REQUIRE(tc5.fps() == vtm::fps::default_value());
+        INFO("tc6 fps: "      << tc6.fps()); REQUIRE(tc6.fps() == vtm::fps::default_value());
+    
+        // conditions for test
+        INFO("tc1 + tc2: " << (tc1 + tc2).ticks()); CHECK(tc1 + tc2 == 42);
+        INFO("tc1 + tc3: " << (tc1 + tc3).ticks()); CHECK(tc1 + tc3 == (12 * 100));
+        INFO("tc1 + tc4: " << (tc1 + tc4).ticks()); CHECK(tc1 + tc4 == (42 * 25 * 100));
+        INFO("tc1 + tc5: " << (tc1 + tc5).ticks()); CHECK(tc1 + tc5 == (42 * 60 * 25 * 100));
+        INFO("tc1 + tc6: " << (tc1 + tc6).ticks()); CHECK(tc1 + tc6 == (42 * 60 * 60 * 25 * 100));
+        INFO("tc1 + all: " << (tc1 + tc2 + tc3 + tc4 + tc5 + tc6).ticks());
+        CHECK((tc1 + tc2 + tc3 + tc4 + tc5 + tc6) == (42 * 60 * 60 * 25 * 100) + (42 * 60 * 25 * 100) + (42 * 25 * 100) + (12 * 100) + (42));
+    }
+
+    SECTION("subtraction of timecode objects with same fps yields correct results") {
+        // default objects
+        vtm::timecode tc1{"42:42:42:12.42"};
+        vtm::timecode tc2{"00:00:00:00.42"};
+        vtm::timecode tc3{"00:00:00:12.00"};
+        vtm::timecode tc4{"00:00:42:00.00"};
+        vtm::timecode tc5{"00:42:00:00.00"};
+        vtm::timecode tc6{"42:00:00:00.00"};
+    
+        // pre-conditions for test
+        INFO("tc1 fps: "      << tc1.fps()); REQUIRE(tc1.fps() == vtm::fps::default_value());
+        INFO("tc2 fps: "      << tc2.fps()); REQUIRE(tc2.fps() == vtm::fps::default_value());
+        INFO("tc3 fps: "      << tc3.fps()); REQUIRE(tc3.fps() == vtm::fps::default_value());
+        INFO("tc4 fps: "      << tc4.fps()); REQUIRE(tc4.fps() == vtm::fps::default_value());
+        INFO("tc5 fps: "      << tc5.fps()); REQUIRE(tc5.fps() == vtm::fps::default_value());
+        INFO("tc6 fps: "      << tc6.fps()); REQUIRE(tc6.fps() == vtm::fps::default_value());
+    
+        // conditions for test
+        INFO("tc1 - tc2: " << (tc1 - tc2).ticks()); CHECK(tc1 - tc2 == ((42 * 60 * 60 * 25 * 100) + (42 * 60 * 25 * 100) + (42 * 25 * 100) + (12 * 100)));
+        INFO("tc1 - tc3: " << (tc1 - tc3).ticks()); CHECK(tc1 - tc3 == ((42 * 60 * 60 * 25 * 100) + (42 * 60 * 25 * 100) + (42 * 25 * 100) + (42)));
+        INFO("tc1 - tc4: " << (tc1 - tc4).ticks()); CHECK(tc1 - tc4 == ((42 * 60 * 60 * 25 * 100) + (42 * 60 * 25 * 100) + (12 * 100) + (42)));
+        INFO("tc1 - tc5: " << (tc1 - tc5).ticks()); CHECK(tc1 - tc5 == ((42 * 60 * 60 * 25 * 100) + (42 * 25 * 100) + (12 * 100) + (42)));
+        INFO("tc1 - tc6: " << (tc1 - tc6).ticks()); CHECK(tc1 - tc6 == ((42 * 60 * 25 * 100) + (42 * 25 * 100) + (12 * 100) + (42)));
+        INFO("tc1 - all: " << (tc1 - tc2 - tc3 - tc4 - tc5 - tc6).ticks()); CHECK((tc1 - tc2 - tc3 - tc4 - tc5 - tc6) == 0);
+    }
+
+    SECTION("addition assignment of timecode objects with same fps yields correct results") {
+        // default objects
+        vtm::timecode tc1{"00:00:00:00.00"};
+        vtm::timecode tc2{"00:00:00:00.42"};
+        vtm::timecode tc3{"00:00:00:12.00"};
+        vtm::timecode tc4{"00:00:42:00.00"};
+        vtm::timecode tc5{"00:42:00:00.00"};
+        vtm::timecode tc6{"42:00:00:00.00"};
+    
+        // pre-conditions for test
+        INFO("tc1 fps: "      << tc1.fps()); REQUIRE(tc1.fps() == vtm::fps::default_value());
+        INFO("tc2 fps: "      << tc2.fps()); REQUIRE(tc2.fps() == vtm::fps::default_value());
+        INFO("tc3 fps: "      << tc3.fps()); REQUIRE(tc3.fps() == vtm::fps::default_value());
+        INFO("tc4 fps: "      << tc4.fps()); REQUIRE(tc4.fps() == vtm::fps::default_value());
+        INFO("tc5 fps: "      << tc5.fps()); REQUIRE(tc5.fps() == vtm::fps::default_value());
+        INFO("tc6 fps: "      << tc6.fps()); REQUIRE(tc6.fps() == vtm::fps::default_value());
+    
+        // conditions for test
+        INFO("tc1 step1: " << tc1.ticks()); tc1 += tc2; CHECK(tc1 == 42);
+        INFO("tc1 step2: " << tc1.ticks()); tc1 += tc3; CHECK(tc1 == (12 * 100) + (42));
+        INFO("tc1 step3: " << tc1.ticks()); tc1 += tc4; CHECK(tc1 == (42 * 25 * 100) + (12 * 100) + (42));
+        INFO("tc1 step4: " << tc1.ticks()); tc1 += tc5; CHECK(tc1 == (42 * 60 * 25 * 100) + (42 * 25 * 100) + (12 * 100) + (42));
+        INFO("tc1 step5: " << tc1.ticks()); tc1 += tc6; CHECK(tc1 == (42 * 60 * 60 * 25 * 100) + (42 * 60 * 25 * 100) + (42 * 25 * 100) + (12 * 100) + (42));
+    }
+
+    SECTION("subtraction assignment of timecode objects with same fps yields correct results") {
+        // default objects
+        vtm::timecode tc1{"42:42:42:12.42"};
+        vtm::timecode tc2{"00:00:00:00.42"};
+        vtm::timecode tc3{"00:00:00:12.00"};
+        vtm::timecode tc4{"00:00:42:00.00"};
+        vtm::timecode tc5{"00:42:00:00.00"};
+        vtm::timecode tc6{"42:00:00:00.00"};
+    
+        // pre-conditions for test
+        INFO("tc1 fps: "      << tc1.fps()); REQUIRE(tc1.fps() == vtm::fps::default_value());
+        INFO("tc2 fps: "      << tc2.fps()); REQUIRE(tc2.fps() == vtm::fps::default_value());
+        INFO("tc3 fps: "      << tc3.fps()); REQUIRE(tc3.fps() == vtm::fps::default_value());
+        INFO("tc4 fps: "      << tc4.fps()); REQUIRE(tc4.fps() == vtm::fps::default_value());
+        INFO("tc5 fps: "      << tc5.fps()); REQUIRE(tc5.fps() == vtm::fps::default_value());
+        INFO("tc6 fps: "      << tc6.fps()); REQUIRE(tc6.fps() == vtm::fps::default_value());
+    
+        // conditions for test
+        INFO("tc1 step1: " << tc1.ticks()); tc1 -= tc2; CHECK(tc1 == (42 * 60 * 60 * 25 * 100) + (42 * 60 * 25 * 100) + (42 * 25 * 100) + (12 * 100));
+        INFO("tc1 step2: " << tc1.ticks()); tc1 -= tc3; CHECK(tc1 == (42 * 60 * 60 * 25 * 100) + (42 * 60 * 25 * 100) + (42 * 25 * 100));
+        INFO("tc1 step3: " << tc1.ticks()); tc1 -= tc4; CHECK(tc1 == (42 * 60 * 60 * 25 * 100) + (42 * 60 * 25 * 100));
+        INFO("tc1 step4: " << tc1.ticks()); tc1 -= tc5; CHECK(tc1 == (42 * 60 * 60 * 25 * 100));
+        INFO("tc1 step5: " << tc1.ticks()); tc1 -= tc6; CHECK(tc1 == 0);
+    }
+}
