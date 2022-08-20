@@ -426,11 +426,13 @@ public:
         return *this;
     }
 
+#pragma warning(push, 1)
     template<TimecodePrimitive V>
     explicit __BasicTimecodeFloat(const V value, const fps_t fps = fps_factory_t::default_value()) noexcept
         : _value(value)
         , _fps(fps)
     {}
+#pragma warning(pop)
 
     explicit constexpr __BasicTimecodeFloat(const string_view_t& tc)
     {

@@ -456,3 +456,64 @@ TEST_CASE("vtm::timecode string conversions", "[chrono][timecode][conversion][st
         INFO("tc3 subframes: " << tc3.subframes()); CHECK(tc3.subframes() == 34);
     }
 }
+
+TEST_CASE("vtm::timecode equality & comparison", "[timecode][chrono][comparison][equality]")
+{
+    SECTION("equivalent timecode objects with same fps returns true") {
+        // default objects
+        vtm::timecode tc1{"12:34:56:12.34"};
+        vtm::timecode tc2{"12:34:56:12.34"};
+
+        // pre-conditions for test
+        INFO("tc1 fps: "    << tc1.fps()); REQUIRE(tc1.fps() == vtm::fps::default_value());
+        INFO("tc2 fps: "    << tc2.fps()); REQUIRE(tc2.fps() == vtm::fps::default_value());
+
+        // conditions for test
+        INFO("tc1 == tc2: "     << (tc1 == tc2)); CHECK(tc1 == tc2);
+        INFO("tc1 != tc2: "     << (tc1 != tc2)); CHECK_FALSE(tc1 != tc2);
+    }
+
+    SECTION("inequivalent timecode objects with same fps returns false") {
+        // default objects
+        vtm::timecode tc1{"12:34:56:12.34"};
+        vtm::timecode tc2{"34:12:56:12.34"};
+
+        // pre-conditions for test
+        INFO("tc1 fps: "    << tc1.fps()); REQUIRE(tc1.fps() == vtm::fps::default_value());
+        INFO("tc2 fps: "    << tc2.fps()); REQUIRE(tc2.fps() == vtm::fps::default_value());
+
+        // conditions for test
+        INFO("tc1 == tc2: "     << (tc1 == tc2)); CHECK_FALSE(tc1 == tc2);
+        INFO("tc1 != tc2: "     << (tc1 != tc2)); CHECK(tc1 != tc2);
+    }
+
+    SECTION("equivalent timecode objects with different fps returns false") {
+        // default objects
+        vtm::timecode tc1{"12:34:56:12.34"};
+        vtm::timecode tc2{"12:34:56:12.34"};
+        tc2.set_fps(vtm::fps::fps_30);
+
+        // pre-conditions for test
+        INFO("tc1 fps: "    << tc1.fps()); REQUIRE(tc1.fps() == vtm::fps::default_value());
+        INFO("tc2 fps: "    << tc2.fps()); REQUIRE(tc2.fps() == vtm::fps::fps_30);
+
+        // conditions for test
+        INFO("tc1 == tc2: "     << (tc1 == tc2)); CHECK_FALSE(tc1 == tc2);
+        INFO("tc1 != tc2: "     << (tc1 != tc2)); CHECK(tc1 != tc2);
+    }
+
+    SECTION("inequivalent timecode objects with different fps returns false") {
+        // default objects
+        vtm::timecode tc1{"12:34:56:12.34"};
+        vtm::timecode tc2{"34:12:56:12.34"};
+        tc2.set_fps(vtm::fps::fps_30);
+
+        // pre-conditions for test
+        INFO("tc1 fps: "    << tc1.fps()); REQUIRE(tc1.fps() == vtm::fps::default_value());
+        INFO("tc2 fps: "    << tc2.fps()); REQUIRE(tc2.fps() == vtm::fps::fps_30);
+
+        // conditions for test
+        INFO("tc1 == tc2: "     << (tc1 == tc2)); CHECK_FALSE(tc1 == tc2);
+        INFO("tc1 != tc2: "     << (tc1 != tc2)); CHECK(tc1 != tc2);
+    }
+}

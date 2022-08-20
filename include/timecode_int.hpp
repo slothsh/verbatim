@@ -149,8 +149,9 @@ static constexpr auto __init_tick_groups(std::tuple<Ts...> is, std::index_sequen
                 return std::get<Is>(is)[__TCGRP_SCALAR_IN_SUBFRAMES] * fps;
             },
 
-            [=]<std::integral T>(T value) constexpr {
-                T str[TC_GROUP_WIDTH] = TCSTRING_GROUP_DEFAULT;
+            [=]<std::integral T, std::integral C, std::size_t N>(T value, C(&str)[N]) constexpr {
+                static_assert(N == TC_GROUP_WIDTH,
+                              "size of transfer string must be size of TC_GROUP_WIDTH");
 
                 for (std::size_t i = 0; i < TC_GROUP_WIDTH; ++i) {
                     str[TC_GROUP_WIDTH - i - 1] = value % 10 + TCSTRING_CHAR_OFFSET;
@@ -343,10 +344,12 @@ public:
         std::size_t values_index = 0;
         std::size_t decimal_pos = TC_GROUP_WIDTH - 1;
 
+#pragma warning(push, 1)
         for (auto c : tc) {
             if (group_index++ < TC_GROUP_WIDTH) {
                 current += (c - TCSTRING_CHAR_OFFSET) * (std::pow(10, decimal_pos--));
             }
+#pragma warning(pop)
 
             else {
                 this->_values[values_index++] = current;
@@ -667,6 +670,40 @@ public:
 
 ///////////////////////////////////////////////////////////////////////////
 //
+//  @SECTION Equality & Comparison
+//
+///////////////////////////////////////////////////////////////////////////
+
+public:
+    friend bool operator==(const __my_type& lhs, const __my_type& rhs)
+    {
+        return equality_op_impl(lhs,
+                                    rhs,
+                                    std::make_index_sequence<TC_TOTAL_GROUPS>{});
+    }
+
+private:
+    template<std::size_t... Is>
+    friend constexpr bool equality_op_impl(const __my_type& lhs,
+                                    const __my_type& rhs,
+                                    std::index_sequence<Is...> seq)
+    {
+        static_assert(sizeof...(Is) == TC_TOTAL_GROUPS,
+                      "total size of indexes in index sequence must be equal to TC_TOTAL_GROUPS");
+
+        const auto fps_factor_lhs = fps_t::to_unsigned(lhs._fps);
+        const auto fps_factor_rhs = fps_t::to_unsigned(rhs._fps);
+
+        const auto lhs_value = ((lhs._values[Is] * CALL_TCGRP_SCALAR_VALUE_MAPPING(Is, fps_factor_lhs)) + ...);
+        const auto rhs_value = ((rhs._values[Is] * CALL_TCGRP_SCALAR_VALUE_MAPPING(Is, fps_factor_rhs)) + ...);
+
+        return lhs_value == rhs_value;
+    }
+
+///////////////////////////////////////////////////////////////////////////
+
+///////////////////////////////////////////////////////////////////////////
+//
 //  -- @SECTION Private Helper Methods --
 //
 ///////////////////////////////////////////////////////////////////////////
@@ -725,7 +762,7 @@ private:
     }
 
     template<std::size_t I, std::size_t Size, std::size_t... Is>
-    constexpr void array_set(auto& arr, auto value,  std::index_sequence<Is...> seq) const
+    constexpr void array_set(auto& arr, auto value, std::index_sequence<Is...> seq) const
     {
         static_assert(I < Size, "index for array type is greater than its size, this will result in a buffer overflow");
         for (std::size_t i = 0; i < TC_GROUP_WIDTH; ++i) {
@@ -736,8 +773,9 @@ private:
     template<std::size_t StrSize, std::size_t... Is>
     constexpr void fill_tcstring_array(char_t(&tcstring)[StrSize], std::index_sequence<Is...> seq) const
     {
+        char_t grp_string[TC_GROUP_WIDTH] = TCSTRING_GROUP_DEFAULT;
         ((array_set<GET_TCGRP_STRING_START(Is),TCSTRING_SIZE>(tcstring,
-                                                              CALL_TCGRP_STRING_MAPPING(Is, this->_values[GET_TCGRP_SCALAR_START(Is)]),
+                                                              CALL_TCGRP_STRING_MAPPING(Is, this->_values[GET_TCGRP_SCALAR_START(Is)], grp_string),
                                                               std::make_index_sequence<TC_GROUP_WIDTH>{})
         ), ... );
     }
