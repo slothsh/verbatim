@@ -213,6 +213,28 @@ struct to_unsigned
 template<std::integral T>
 using to_unsigned_t = typename to_unsigned<T>::type;
 
+template<auto Value1, auto Value2, typename T>
+    requires std::is_same_v<decltype(Value1), decltype(Value2)>
+struct values_equal : std::bool_constant<Value1 == Value2>
+{
+    using type = T;
+};
+
+template<typename T>
+struct default_type : std::true_type
+{
+    using type = T;
+};
+
+template<int Size>
+using type_of_size_t = typename std::disjunction<
+        values_equal<Size, 1, std::int8_t>,
+        values_equal<Size, 2, std::int16_t>,
+        values_equal<Size, 4, std::int32_t>,
+        values_equal<Size, 8, std::int64_t>,
+        std::type_identity<void>
+    >::type;
+
 } // @END OF namespace vtm::traits
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -251,9 +273,6 @@ struct __display_static
     using display_type = S;
 
     auto display() const -> display_type { return display_type(static_cast<reference>(*this)); }
-
-    __display_static() = default;
-    virtual ~__display_static() = default;
 };
 
 template<Regular T>
@@ -305,9 +324,6 @@ struct __convert_to_float
     using const_reference = std::add_const_t<type>&;
     using float_type = std::remove_cvref_t<F>;
 
-    __convert_to_float() = default;
-    virtual ~__convert_to_float() = default;
-
     auto as_float() -> float_type { return float_type(static_cast<reference>(*this)); };
     auto as_float() const -> float_type { return float_type(static_cast<const_reference>(*this)); };
 };
@@ -319,9 +335,6 @@ struct __convert_to_unsigned
     using reference = type&;
     using const_reference = std::add_const_t<type>&;
     using unsigned_type = std::remove_cvref_t<U>;
-
-    __convert_to_unsigned() = default;
-    virtual ~__convert_to_unsigned() = default;
 
     auto as_unsigned() -> unsigned_type { return unsigned_type(static_cast<reference>(*this)); };
     auto as_unsigned() const -> unsigned_type { return unsigned_type(static_cast<const_reference>(*this)); };
@@ -335,9 +348,6 @@ struct __convert_to_signed
     using const_reference = std::add_const_t<type>&;
     using signed_type = std::remove_cvref_t<I>;
 
-    __convert_to_signed() = default;
-    virtual ~__convert_to_signed() = default;
-
     auto as_signed() -> signed_type { return signed_type(static_cast<reference>(*this)); };
     auto as_signed() const -> signed_type { return signed_type(static_cast<const_reference>(*this)); };
 };
@@ -349,9 +359,6 @@ struct __convert_to_string
     using reference = type&;
     using const_reference = std::add_const_t<type>&;
     using string_type = std::remove_cvref_t<S>;
-
-    __convert_to_string() = default;
-    virtual ~__convert_to_string() = default;
 
     auto as_string() -> string_type { return string_type(static_cast<reference>(*this)); };
     auto as_string() const -> string_type { return string_type(static_cast<const_reference>(*this)); };

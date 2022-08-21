@@ -39,7 +39,6 @@
 #define VTM_TIMECODE_INT_MACROS
 
 
-
 #endif // @END OF VTM_TIMECODE_INT_MACROS
 
 ///////////////////////////////////////////////////////////////////////////
@@ -95,6 +94,7 @@ namespace vtm::chrono::internal {
 #define TCFLAGS_FALSE 0
 #define TCFLAGS_MASK_TCSTRING_FORMAT_INDEX 0
 #define TCFLAGS_MASK_TCSTRING_DROPFRAME_INDEX 1
+#define TCFLAGS_MASK_ALL 0xffffffffffffffff
 #define TCFLAGS_MASK_TCSTRING_FORMAT (0x01 << TCFLAGS_MASK_TCSTRING_FORMAT_INDEX)
 #define TCFLAGS_MASK_TCSTRING_DROPFRAME (0x01 << TCFLAGS_MASK_TCSTRING_DROPFRAME_INDEX)
 #define TCFLAGS_SHOW_WITH_SUBFRAMES TCFLAGS_MASK_TCSTRING_FORMAT
@@ -195,7 +195,6 @@ template<std::integral TInt,
          vtm::traits::StringLike TView,
          FpsFormatFactory TFps>
 class __BasicTimecodeInt : public vtm::traits::__implicit_string_overloads_crtp<__TEMPLATE_TYPE, TString, TView>
-                         , public vtm::traits::__display<typename vtm::traits::__implicit_string_overloads<TString, TView>::string_view_type>
                          , public vtm::traits::__convert_to_signed<__TEMPLATE_TYPE, vtm::traits::to_signed_t<TInt>>
                          , public vtm::traits::__convert_to_unsigned<__TEMPLATE_TYPE, vtm::traits::to_unsigned_t<TInt>>
                          , public vtm::traits::__convert_to_float<__TEMPLATE_TYPE, TFloat>
@@ -350,6 +349,7 @@ public:
         , _values{}
     {
         // validate tc_string
+        // TODO: Better default behaviour for invalid tc strings
         assert(this->is_valid_tcstring(tc) && "size of timecode string must be exactly the same as TCSTRING_SIZE_WITH_SUBFRAMES");
 
         // transfer tc_string data
@@ -379,11 +379,16 @@ public:
 private:
     inline bool is_valid_tcstring(const string_view_t tc)
     {
-        if (tc.length() != TCSTRING_SIZE_WITH_SUBFRAMES) return false;
+        if (tc.length() != TCSTRING_SIZE_WITH_SUBFRAMES
+            && tc.length() != TCSTRING_SIZE_STANDARD)
+        {
+            return false;
+        }
 
         std::size_t group_index = 0;
         for (auto c : tc) {
             if (group_index++ < TC_GROUP_WIDTH) {
+                // TODO: validate that digits respect max/min bounds
                 if (!std::isdigit(c)) return false;
             }
 
@@ -454,7 +459,10 @@ public:
         char_t tc_string[TCSTRING_SIZE_WITH_SUBFRAMES] = TCSTRING_DEFAULT_INITIALIZER;
         this->fill_tcstring_array(tc_string, std::make_index_sequence<TC_TOTAL_GROUPS>{});
 
-        std::size_t string_size = (this->is_flag_set<TCFLAGS_SHOW_WITH_SUBFRAMES>()) ? TCSTRING_SIZE_WITH_SUBFRAMES : TCSTRING_SIZE_STANDARD;
+        std::size_t string_size = (this->is_flag_set<TCFLAGS_SHOW_WITH_SUBFRAMES>())
+            ? TCSTRING_SIZE_WITH_SUBFRAMES
+            : TCSTRING_SIZE_STANDARD;
+
         string_t str(string_size, '\0');
 
         for (std::size_t i = 0; i < string_size; ++i) {
@@ -653,7 +661,7 @@ public:
     template<std::integral T>
     constexpr void operator=(T&& ticks)
     {
-        assert(TCSCALAR_LOWERBOUND() < ticks && ticks < TCSCALAR_UPPERBOUND(T)
+        assert(TCSCALAR_LOWERBOUND() <= ticks && ticks < TCSCALAR_UPPERBOUND(T)
                && "value of ticks in integral assignment operator conversion is out of bounds");
 
         *this = __my_type{std::forward<T>(ticks)};
@@ -873,6 +881,17 @@ public:
         }
     }
 
+    __my_type& operator++() {
+        this->set_ticks(this->ticks() + 1);
+        return *this;
+    }
+
+    __my_type operator++(int) {
+        auto tmp = *this;
+        this->set_ticks(this->ticks() + 1);
+        return tmp;
+    }
+
 ///////////////////////////////////////////////////////////////////////////
 
 
@@ -881,6 +900,18 @@ public:
 //  -- @SECTION Flags Helper Methods --
 //
 ///////////////////////////////////////////////////////////////////////////
+
+public:
+    inline void enable_extended_string(bool enable)
+    {
+        if (enable) {
+            this->set_flag<TCFLAGS_SHOW_WITH_SUBFRAMES>();
+        }
+
+        else {
+            this->unset_flag<TCFLAGS_SHOW_WITH_SUBFRAMES>();
+        }
+    }
 
 private:
     template<int Mask>
@@ -893,6 +924,18 @@ private:
     constexpr bool is_flag_unset() const
     {
         return (this->_flags & Mask) == TCFLAGS_FALSE;
+    }
+
+    template<int Mask>
+    constexpr void set_flag()
+    {
+        this->_flags = this->_flags | Mask;
+    }
+
+    template<int Mask>
+    constexpr void unset_flag()
+    {
+        this->_flags = (this->_flags & (TCFLAGS_MASK_ALL ^ Mask));
     }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -1020,6 +1063,7 @@ private:
 
 #undef TCFLAGS_DEFAULT
 #undef TCFLAGS_FALSE
+#undef TCFLAGS_MASK_ALL
 #undef TCFLAGS_MASK_TCSTRING_FORMAT_INDEX
 #undef TCFLAGS_MASK_TCSTRING_DROPFRAME_INDEX
 #undef TCFLAGS_MASK_TCSTRING_FORMAT

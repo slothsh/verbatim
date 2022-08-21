@@ -1,10 +1,56 @@
 #define CATCH_CONFIG_MAIN
 #include <Catch2/catch_all.hpp>
+#include "catch2/benchmark/catch_benchmark.hpp"
 #include "catch2/catch_message.hpp"
 #include "catch2/catch_test_macros.hpp"
 #include "timecode.hpp"
 #include <string>
 #include <string_view>
+
+///////////////////////////////////////////////////////////////////////////
+//
+//  -- @SECTION Static Tests --
+//
+///////////////////////////////////////////////////////////////////////////
+
+#ifdef ENABLE_STATIC_TESTS
+
+// static helpers
+consteval int to_nearest_padding(int size, int alignment)
+{
+    int boundary = 0;
+    while (boundary < size) {
+        boundary += alignment;
+    }
+
+    return boundary - size;
+}
+
+consteval int size_of_vtmtimecode()
+{
+    constexpr int size = (sizeof(vtm::timecode::scalar_t) * 5) +
+                          sizeof(vtm::timecode::fps_scalar_t) +
+                          sizeof(vtm::timecode::flags_t) +
+                          sizeof(void*);
+
+    constexpr int padding = to_nearest_padding(size, alignof(vtm::timecode));
+
+    return size + padding;
+}
+
+// conditions for static tests
+static_assert(sizeof(vtm::timecode) == size_of_vtmtimecode(), "size of vtm::timecode object does not meet established size requirements");
+
+#endif // @END OF ENABLE_STATIC_TESTS
+
+///////////////////////////////////////////////////////////////////////////
+
+
+///////////////////////////////////////////////////////////////////////////
+//
+//  -- @SECTION Initialization Tests --
+//
+///////////////////////////////////////////////////////////////////////////
 
 TEST_CASE("vtm::timecode initialization", "[timecode][chrono][initialization]")
 {
@@ -123,7 +169,7 @@ TEST_CASE("vtm::timecode initialization", "[timecode][chrono][initialization]")
         INFO("tc1 subframes: " << tc1.subframes()); CHECK(tc1.subframes() == 5);
     }
 
-    SECTION("string view subsumption initialization"){
+    SECTION("string view subsumption initialization with extended timecode form"){
         // source object
         vtm::timecode tc1{ "00:00:00:00.00" };
         vtm::timecode tc2{ "12:34:56:12.34" };
@@ -152,9 +198,47 @@ TEST_CASE("vtm::timecode initialization", "[timecode][chrono][initialization]")
         INFO("tc2 frames: "    << tc2.frames());    CHECK(tc2.frames()    == 12);
         INFO("tc2 subframes: " << tc2.subframes()); CHECK(tc2.subframes() == 34);
     }
+
+    SECTION("string view subsumption initialization with standard timecode form"){
+        // source object
+        vtm::timecode tc1{ "00:00:00:00" };
+        vtm::timecode tc2{ "12:34:56:12" };
+
+        // pre-conditions for valid copy construction
+        INFO("tc1 fps: "       << tc1.fps());       REQUIRE(tc1.fps()       == vtm::fps::default_value());
+        INFO("tc2 fps: "       << tc2.fps());       REQUIRE(tc2.fps()       == vtm::fps::default_value());
+
+        // condtions for test
+        INFO("tc1 ticks: "     << tc1.ticks());     CHECK(tc1.ticks()     == 0);
+        INFO("tc1 hours: "     << tc1.hours());     CHECK(tc1.hours()     == 0);
+        INFO("tc1 minutes: "   << tc1.minutes());   CHECK(tc1.minutes()   == 0);
+        INFO("tc1 seconds: "   << tc1.seconds());   CHECK(tc1.seconds()   == 0);
+        INFO("tc1 frames: "    << tc1.frames());    CHECK(tc1.frames()    == 0);
+        INFO("tc1 subframes: " << tc1.subframes()); CHECK(tc1.subframes() == 0);
+
+        INFO("tc2 ticks: "     << tc2.ticks());     CHECK(tc2.ticks()     == (12 * 60 * 60 * 25 * 100) +
+                                                                             (34 * 60 * 25 * 100) +
+                                                                             (56 * 25 * 100) +
+                                                                             (12 * 100));
+
+        INFO("tc2 hours: "     << tc2.hours());     CHECK(tc2.hours()     == 12);
+        INFO("tc2 minutes: "   << tc2.minutes());   CHECK(tc2.minutes()   == 34);
+        INFO("tc2 seconds: "   << tc2.seconds());   CHECK(tc2.seconds()   == 56);
+        INFO("tc2 frames: "    << tc2.frames());    CHECK(tc2.frames()    == 12);
+        INFO("tc2 subframes: " << tc2.subframes()); CHECK(tc2.subframes() == 0);
+    }
 }
 
-TEST_CASE("vtm::timecode set value semantics", "[chrono][timecode][conversion][number]")
+///////////////////////////////////////////////////////////////////////////
+
+
+///////////////////////////////////////////////////////////////////////////
+//
+//  -- @SECTION Value Modification Semantics Tests --
+//
+///////////////////////////////////////////////////////////////////////////
+
+TEST_CASE("vtm::timecode value modification semantics", "[chrono][timecode][conversion][number]")
 {
     SECTION("groups can be set independently") {
         // default object
@@ -175,23 +259,31 @@ TEST_CASE("vtm::timecode set value semantics", "[chrono][timecode][conversion][n
         INFO("tc1 fps: "       << tc1.fps());       REQUIRE(tc1.fps()       == vtm::fps::fps_25);
     }
 
-    SECTION("groups will cascade with correct group values") {
+    SECTION("groups will cascade from top to bottom with correct values") {
         // default object
         vtm::timecode tc1{};
 
         // pre-conditions for test
-        INFO("tc1 fps: "       << tc1.fps());       REQUIRE(tc1.fps()     == vtm::fps::default_value());
+        INFO("tc1 fps: " << tc1.fps()); REQUIRE(tc1.fps() == vtm::fps::default_value());
 
-        tc1.set_hours(4);                // 4 hours
-        tc1.set_minutes(2 * 60 + 42);    // 2 hours   , 42 minutes
-        tc1.set_seconds(6 * 60 + 31);    // 6 minutes , 31 seconds
-        tc1.set_frames(9 * 25 + 12);     // 9 seconds , 12 frames
-        tc1.set_subframes(4 * 100 + 69); // 4 frames  , 69 subframes
 
         // conditions for test
-        INFO("tc1 hours: "     << tc1.hours());     CHECK(tc1.hours()     == 2);
-        INFO("tc1 minutes: "   << tc1.minutes());   CHECK(tc1.minutes()   == 6);
-        INFO("tc1 seconds: "   << tc1.seconds());   CHECK(tc1.seconds()   == 9);
+        tc1.set_hours(4);                // 4 hours
+        INFO("tc1 hours: " << tc1.hours()); CHECK(tc1.hours() == 4);
+
+        tc1.set_minutes(2 * 60 + 42);    // 2 hours   , 42 minutes
+        INFO("tc1 hours: "   << tc1.hours());   CHECK(tc1.hours()   == 2);
+        INFO("tc1 minutes: " << tc1.minutes()); CHECK(tc1.minutes() == 42);
+
+        tc1.set_seconds(6 * 60 + 31);    // 6 minutes , 31 seconds
+        INFO("tc1 minutes: " << tc1.minutes()); CHECK(tc1.minutes() == 6);
+        INFO("tc1 seconds: " << tc1.seconds()); CHECK(tc1.seconds() == 31);
+
+        tc1.set_frames(9 * 25 + 12);     // 9 seconds , 12 frames
+        INFO("tc1 seconds: " << tc1.seconds()); CHECK(tc1.seconds() == 9);
+        INFO("tc1 frames: "  << tc1.frames());  CHECK(tc1.frames()  == 12);
+
+        tc1.set_subframes(4 * 100 + 69); // 4 frames  , 69 subframes
         INFO("tc1 frames: "    << tc1.frames());    CHECK(tc1.frames()    == 4);
         INFO("tc1 subframes: " << tc1.subframes()); CHECK(tc1.subframes() == 69);
     }
@@ -217,6 +309,15 @@ TEST_CASE("vtm::timecode set value semantics", "[chrono][timecode][conversion][n
         INFO("tc1 subframes: " << tc1.subframes()); CHECK(tc1.subframes() == 69);
     }
 }
+
+///////////////////////////////////////////////////////////////////////////
+
+
+///////////////////////////////////////////////////////////////////////////
+//
+//  -- @SECTION Tick Value Representation Tests --
+//
+///////////////////////////////////////////////////////////////////////////
 
 TEST_CASE("vtm::timecode tick value representation", "[chrono][timecode][number]")
 {
@@ -266,6 +367,15 @@ TEST_CASE("vtm::timecode tick value representation", "[chrono][timecode][number]
     }
 }
 
+///////////////////////////////////////////////////////////////////////////
+
+
+///////////////////////////////////////////////////////////////////////////
+//
+//  -- @SECTION Integral Assignment Tests --
+//
+///////////////////////////////////////////////////////////////////////////
+
 TEST_CASE("vtm::timecode integral assignment", "[chrono][timecode][conversion][number]")
 {
     SECTION("assignment to signed types return correct tick values") {
@@ -312,6 +422,15 @@ TEST_CASE("vtm::timecode integral assignment", "[chrono][timecode][conversion][n
         INFO("tc4 subframes: " << tc4.subframes()); CHECK(tc4.subframes() == 34);
     }
 }
+
+///////////////////////////////////////////////////////////////////////////
+
+
+///////////////////////////////////////////////////////////////////////////
+//
+//  -- @SECTION Signed Type Conversion Tests --
+//
+///////////////////////////////////////////////////////////////////////////
 
 TEST_CASE("vtm::timecode signed type conversions", "[chrono][timecode][conversion][number]")
 {
@@ -372,11 +491,21 @@ TEST_CASE("vtm::timecode signed type conversions", "[chrono][timecode][conversio
     }
 }
 
+///////////////////////////////////////////////////////////////////////////
+
+
+///////////////////////////////////////////////////////////////////////////
+//
+//  -- @SECTION String Conversion Tests --
+//
+///////////////////////////////////////////////////////////////////////////
+
 TEST_CASE("vtm::timecode string conversions", "[chrono][timecode][conversion][string]")
 {
     SECTION("string representation corresponds to default object") {
         // default object
         vtm::timecode tc1{};
+        tc1.enable_extended_string(true);
         std::string str1 = tc1;
 
         // pre-conditions for test
@@ -389,6 +518,7 @@ TEST_CASE("vtm::timecode string conversions", "[chrono][timecode][conversion][st
     SECTION("string groups correspond to scalar values") {
         // default object
         vtm::timecode tc1{};
+        tc1.enable_extended_string(true);
 
         // pre-conditions for test
         INFO("tc1 fps: "    << tc1.fps()); REQUIRE(tc1.fps() == vtm::fps::default_value());
@@ -406,6 +536,7 @@ TEST_CASE("vtm::timecode string conversions", "[chrono][timecode][conversion][st
     SECTION("string groups correspond to cascaded scalar values") {
         // default object
         vtm::timecode tc1{};
+        tc1.enable_extended_string(true);
 
         // pre-conditions for test
         INFO("tc1 fps: "    << tc1.fps()); REQUIRE(tc1.fps() == vtm::fps::default_value());
@@ -456,6 +587,15 @@ TEST_CASE("vtm::timecode string conversions", "[chrono][timecode][conversion][st
         INFO("tc3 subframes: " << tc3.subframes()); CHECK(tc3.subframes() == 34);
     }
 }
+
+///////////////////////////////////////////////////////////////////////////
+
+
+///////////////////////////////////////////////////////////////////////////
+//
+//  -- @SECTION Equality & Comparison Tests --
+//
+///////////////////////////////////////////////////////////////////////////
 
 TEST_CASE("vtm::timecode equality & comparison", "[timecode][chrono][comparison][equality][ordering]")
 {
@@ -564,6 +704,15 @@ TEST_CASE("vtm::timecode equality & comparison", "[timecode][chrono][comparison]
         INFO("tc1 > tc4: "  << (tc1 > tc4));  CHECK_FALSE(tc1 > tc4);
     }
 }
+
+///////////////////////////////////////////////////////////////////////////
+
+
+///////////////////////////////////////////////////////////////////////////
+//
+//  -- @SECTION Arithmetic Operation Tests --
+//
+///////////////////////////////////////////////////////////////////////////
 
 TEST_CASE("vtm::timecode arithmetic operations", "[timecode][chrono][arithmetic]")
 {
@@ -698,7 +847,7 @@ TEST_CASE("vtm::timecode arithmetic operations", "[timecode][chrono][arithmetic]
 
     SECTION("division of timecode objects with same fps yields correct results") {
         // default objects
-        vtm::timecode tc1{"00:00:00:00.01"};
+        vtm::timecode tc1{"00:00:00:00.02"};
         vtm::timecode tc2{"00:00:00:00.42"};
         vtm::timecode tc3{"00:00:00:12.00"};
         vtm::timecode tc4{"00:00:42:00.00"};
@@ -714,10 +863,40 @@ TEST_CASE("vtm::timecode arithmetic operations", "[timecode][chrono][arithmetic]
         INFO("tc6 fps: "      << tc6.fps()); REQUIRE(tc6.fps() == vtm::fps::default_value());
 
         // conditions for test
-        INFO("tc1 / tc2: " << (tc1 / tc2).ticks()); CHECK(tc1 / tc2 == 42);
-        INFO("tc1 / tc3: " << (tc1 / tc3).ticks()); CHECK(tc1 / tc3 == (12 * 100));
-        INFO("tc1 / tc4: " << (tc1 / tc4).ticks()); CHECK(tc1 / tc4 == (42 * 25 * 100));
-        INFO("tc1 / tc5: " << (tc1 / tc5).ticks()); CHECK(tc1 / tc5 == (42 * 60 * 25 * 100));
-        INFO("tc1 / tc6: " << (tc1 / tc6).ticks()); CHECK(tc1 / tc6 == (42 * 60 * 60 * 25 * 100));
+        INFO("tc2 / tc1: " << (tc2 / tc1).ticks()); CHECK(tc2 / tc1 == 21);
+        INFO("tc3 / tc1: " << (tc3 / tc1).ticks()); CHECK(tc3 / tc1 == (6 * 100));
+        INFO("tc4 / tc1: " << (tc4 / tc1).ticks()); CHECK(tc4 / tc1 == (21 * 25 * 100));
+        INFO("tc5 / tc1: " << (tc5 / tc1).ticks()); CHECK(tc5 / tc1 == (21 * 60 * 25 * 100));
+        INFO("tc6 / tc1: " << (tc6 / tc1).ticks()); CHECK(tc6 / tc1 == (21 * 60 * 60 * 25 * 100));
+    }
+
+    SECTION("pre-increment operator yields correct results") {
+        // default objects
+        vtm::timecode tc1{"00:00:00:00.00"};
+        std::size_t iterations = (59 * 25 * 100) + (24 * 100) + 99;
+        for (; tc1 < iterations; ++tc1);
+
+        // pre-conditions for test
+        INFO("tc1 fps: " << tc1.fps()); REQUIRE(tc1.fps() == vtm::fps::default_value());
+
+
+        // conditions for test
+        INFO("tc1 value: " << tc1.ticks()); CHECK(tc1 == iterations);
+    }
+
+    SECTION("post-increment operator yields correct results") {
+        // default objects
+        vtm::timecode tc1{"00:00:00:00.00"};
+        std::size_t iterations = (59 * 25 * 100) + (24 * 100) + 99;
+        for (; tc1 < iterations; tc1++);
+
+        // pre-conditions for test
+        INFO("tc1 fps: " << tc1.fps()); REQUIRE(tc1.fps() == vtm::fps::default_value());
+
+
+        // conditions for test
+        INFO("tc1 value: " << tc1.ticks()); CHECK(tc1 == iterations);
     }
 }
+
+///////////////////////////////////////////////////////////////////////////
