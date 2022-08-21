@@ -9,6 +9,7 @@
 
 // Standard headers
 #include <algorithm>
+#include <bit>
 #include <cassert>
 #include <compare>
 #include <cstring>
@@ -25,6 +26,7 @@
 #include <utility>
 
 // Library headers
+#include "catch2/internal/catch_section.hpp"
 #include "errors.hpp"
 #include "timecode_common.hpp"
 #include "traits.hpp"
@@ -63,7 +65,8 @@ namespace vtm::chrono::internal {
 #define TCSTRING_SECS_START (TC_GROUP_WIDTH * 2 + 2)
 #define TCSTRING_FRAMES_START (TC_GROUP_WIDTH * 3 + 3)
 #define TCSTRING_SUBFRAMES_START (TC_GROUP_WIDTH * 4 + 4)
-#define TCSTRING_SIZE ((TC_GROUP_WIDTH * TC_TOTAL_GROUPS) + (TC_TOTAL_GROUPS - 1))
+#define TCSTRING_SIZE_STANDARD ((TC_GROUP_WIDTH * (TC_TOTAL_GROUPS - 1)) + ((TC_TOTAL_GROUPS - 1) - 1))
+#define TCSTRING_SIZE_WITH_SUBFRAMES ((TC_GROUP_WIDTH * TC_TOTAL_GROUPS) + (TC_TOTAL_GROUPS - 1))
 #define TCSTRING_CHAR_OFFSET '0'
 
 #define TCSCALAR_HRS_MAX 60
@@ -87,6 +90,15 @@ namespace vtm::chrono::internal {
 #define TCSCALAR_1HR_IN_SUBFRAMES (TCSCALAR_HRS_TICKS * TCSCALAR_SUBFRAMES_PER_FRAMES)
 #define TCSCALAR_1MIN_IN_SUBFRAMES (TCSCALAR_MINS_TICKS * TCSCALAR_SUBFRAMES_PER_FRAMES)
 #define TCSCALAR_1SEC_IN_SUBFRAMES (TCSCALAR_SECS_TICKS * TCSCALAR_SUBFRAMES_PER_FRAMES)
+
+#define TCFLAGS_DEFAULT 0
+#define TCFLAGS_FALSE 0
+#define TCFLAGS_MASK_TCSTRING_FORMAT_INDEX 0
+#define TCFLAGS_MASK_TCSTRING_DROPFRAME_INDEX 1
+#define TCFLAGS_MASK_TCSTRING_FORMAT (0x01 << TCFLAGS_MASK_TCSTRING_FORMAT_INDEX)
+#define TCFLAGS_MASK_TCSTRING_DROPFRAME (0x01 << TCFLAGS_MASK_TCSTRING_DROPFRAME_INDEX)
+#define TCFLAGS_SHOW_WITH_SUBFRAMES TCFLAGS_MASK_TCSTRING_FORMAT
+#define TCFLAGS_IS_DROPFRAME TCFLAGS_MASK_TCSTRING_DROPFRAME
 
 #define __TCGRP_SCALAR_START 0
 #define __TCGRP_SCALAR_MIN 1
@@ -147,7 +159,7 @@ static constexpr auto __init_tick_groups(std::tuple<Ts...> is, std::index_sequen
 
             [=](std::unsigned_integral auto fps) constexpr -> std::uint64_t {
                 if (std::get<Is>(is)[__TCGRP_SCALAR_IN_SUBFRAMES] == 0) return TCSCALAR_SUBFRAMES_PER_FRAMES;
-                else if (std::get<Is>(is)[__TCGRP_SCALAR_IN_SUBFRAMES] == -1) return 1; 
+                else if (std::get<Is>(is)[__TCGRP_SCALAR_IN_SUBFRAMES] == -1) return 1;
                 return std::get<Is>(is)[__TCGRP_SCALAR_IN_SUBFRAMES] * fps;
             },
 
@@ -211,7 +223,7 @@ public:
     using display_t       = string_view_t;
     using fps_t           = TFps;
     using fps_scalar_t    = typename TFps::type;
-    using flags_t         = std::bitset<TC_FLAGS_SIZE>;
+    using flags_t         = std::uint8_t;
     using scalar_t        = std::uint8_t;
 
 ///////////////////////////////////////////////////////////////////////////
@@ -312,9 +324,9 @@ public:
         this->_fps = tc._fps;
         this->_flags = tc._flags;
         this->set_values(tc._values);
-        
+
         tc._fps = fps_t::default_value();
-        tc._flags = {};
+        tc._flags = TCFLAGS_DEFAULT;
         __set_values_default(tc._values);
 
         return *this;
@@ -324,7 +336,7 @@ public:
     explicit constexpr __BasicTimecodeInt(const T ticks,
                                           const fps_scalar_t fps = fps_t::default_value()) noexcept
         : _fps(fps)
-        , _flags({})
+        , _flags(TCFLAGS_DEFAULT)
         , _values{}
     {
         this->set_ticks_impl(ticks,
@@ -334,11 +346,11 @@ public:
     explicit constexpr __BasicTimecodeInt(const string_view_t tc,
                                           const fps_scalar_t fps = fps_t::default_value())
         : _fps(fps)
-        , _flags({})
+        , _flags(TCFLAGS_DEFAULT)
         , _values{}
     {
         // validate tc_string
-        assert(this->is_valid_tcstring(tc) && "size of timecode string must be exactly the same as TCSTRING_SIZE");
+        assert(this->is_valid_tcstring(tc) && "size of timecode string must be exactly the same as TCSTRING_SIZE_WITH_SUBFRAMES");
 
         // transfer tc_string data
         scalar_t current = 0;
@@ -349,7 +361,7 @@ public:
 #pragma warning(push, 1)
         for (auto c : tc) {
             if (group_index++ < TC_GROUP_WIDTH) {
-                current += (c - TCSTRING_CHAR_OFFSET) * (std::pow(10, decimal_pos--));
+                current += (c - TCSTRING_CHAR_OFFSET) * (std::pow(10, decimal_pos--)); // TODO: Roll your own integral pow function to avoid conversion
             }
 #pragma warning(pop)
 
@@ -367,7 +379,7 @@ public:
 private:
     inline bool is_valid_tcstring(const string_view_t tc)
     {
-        if (tc.length() != TCSTRING_SIZE) return false;
+        if (tc.length() != TCSTRING_SIZE_WITH_SUBFRAMES) return false;
 
         std::size_t group_index = 0;
         for (auto c : tc) {
@@ -439,11 +451,13 @@ public:
 
     operator string_type() const
     {
-        char_t tc_string[TCSTRING_SIZE] = TCSTRING_DEFAULT_INITIALIZER;
+        char_t tc_string[TCSTRING_SIZE_WITH_SUBFRAMES] = TCSTRING_DEFAULT_INITIALIZER;
         this->fill_tcstring_array(tc_string, std::make_index_sequence<TC_TOTAL_GROUPS>{});
-        string_t str(TCSTRING_SIZE, '\0');
 
-        for (std::size_t i = 0; i < TCSTRING_SIZE; ++i) {
+        std::size_t string_size = (this->is_flag_set<TCFLAGS_SHOW_WITH_SUBFRAMES>()) ? TCSTRING_SIZE_WITH_SUBFRAMES : TCSTRING_SIZE_STANDARD;
+        string_t str(string_size, '\0');
+
+        for (std::size_t i = 0; i < string_size; ++i) {
             str[i] = tc_string[i];
         }
 
@@ -476,14 +490,14 @@ private:
 public:
     inline void reset() noexcept
     {
-        this->_flags = {};
+        this->_flags = TCFLAGS_DEFAULT;
         __set_values_default(this->_values);
     }
 
     inline void reset_all() noexcept
     {
         this->_fps = fps_t::default_value();
-        this->_flags = {};
+        this->_flags = TCFLAGS_DEFAULT;
         __set_values_default(this->_values);
     }
 
@@ -648,7 +662,7 @@ public:
     void operator=(const char_t* tc)
     {
         std::size_t length = std::strlen(tc);
-        assert(length == TCSTRING_SIZE || length == TCSTRING_SIZE - TC_GROUP_WIDTH - 1
+        assert(length == TCSTRING_SIZE_WITH_SUBFRAMES || length == TCSTRING_SIZE_WITH_SUBFRAMES - TC_GROUP_WIDTH - 1
                && "size of const char_t* in string assignment operator must be size of a valid tc string");
 
         *this = __my_type{tc};
@@ -657,7 +671,7 @@ public:
     template<std::size_t N>
     constexpr void operator=(const char_t(tc)[N])
     {
-        static_assert(N == TCSTRING_SIZE + 1 || N == TCSTRING_SIZE - TC_GROUP_WIDTH,
+        static_assert(N == TCSTRING_SIZE_WITH_SUBFRAMES + 1 || N == TCSTRING_SIZE_WITH_SUBFRAMES - TC_GROUP_WIDTH,
                       "size of const char_t array in string assignment operator must be size of a valid tc string");
 
         *this = __my_type{tc};
@@ -685,7 +699,7 @@ public:
     {
         if constexpr (std::is_same_v<Rhs, __my_type>)
             return lhs.ticks() == rhs.ticks();
-    
+
         else if constexpr (std::is_integral_v<Rhs>)
             return lhs.ticks() == rhs;
     }
@@ -864,48 +878,33 @@ public:
 
 ///////////////////////////////////////////////////////////////////////////
 //
+//  -- @SECTION Flags Helper Methods --
+//
+///////////////////////////////////////////////////////////////////////////
+
+private:
+    template<int Mask>
+    constexpr bool is_flag_set() const
+    {
+        return (this->_flags & Mask) == Mask;
+    }
+
+    template<int Mask>
+    constexpr bool is_flag_unset() const
+    {
+        return (this->_flags & Mask) == TCFLAGS_FALSE;
+    }
+
+///////////////////////////////////////////////////////////////////////////
+
+
+///////////////////////////////////////////////////////////////////////////
+//
 //  -- @SECTION Private Helper Methods --
 //
 ///////////////////////////////////////////////////////////////////////////
 
 private:
-    template<std::size_t I>
-    constexpr scalar_t at() const noexcept
-    {
-        static_assert(I < TC_TOTAL_GROUPS, "size of index must be smaller than TC_TOTAL_GROUPS");
-        return this->_values[I];
-    }
-
-    template<std::size_t I, scalar_t value>
-    constexpr void set_at()
-    {
-        static_assert(I < TC_TOTAL_GROUPS, "size of index must be smaller than TC_TOTAL_GROUPS");
-        static_assert(std::is_same_v<decltype(value), scalar_t>, "value of input type must be the same as scalar_t");
-        static_assert(value >= std::numeric_limits<scalar_t>::min(), "value for hours must greater than or eqauls to scalar_t minimum");
-
-        if constexpr (I == 0) {
-            static_assert(value <= TCSCALAR_HRS_MAX, "value for hours must be less than or equals TCSCALAR_HRS_MAX");
-        }
-
-        else if constexpr (I == 1) {
-            static_assert(value <= TCSCALAR_MINS_MAX, "value for hours must be less than or equals TCSCALAR_MINS_MAX");
-        }
-
-        else if constexpr (I == 2) {
-            static_assert(value <= TCSCALAR_SECS_MAX, "value for hours must be less than or equals TCSCALAR_SECS_MAX");
-        }
-
-        else if constexpr (I == 3) {
-            static_assert(value <= TCSCALAR_FRAMES_MAX, "value for hours must be less than or equals TCSCALAR_FRAMES_MAX");
-        }
-
-        else if constexpr (I == 4) {
-            static_assert(value <= TCSCALAR_SUBFRAMES_MAX, "value for hours must be less than or equals TCSCALAR_SUBFRAMES_MAX");
-        }
-
-        this->_values[I] = value; 
-    }
-
     template<std::size_t Index, std::integral T>
     constexpr auto to_ticks(T value) const -> vtm::traits::to_unsigned_t<T>
     {
@@ -934,9 +933,9 @@ private:
     constexpr void fill_tcstring_array(char_t(&tcstring)[StrSize], std::index_sequence<Is...> seq) const
     {
         char_t grp_string[TC_GROUP_WIDTH] = TCSTRING_GROUP_DEFAULT;
-        ((array_set<GET_TCGRP_STRING_START(Is),TCSTRING_SIZE>(tcstring,
-                                                              CALL_TCGRP_STRING_MAPPING(Is, this->_values[GET_TCGRP_SCALAR_START(Is)], grp_string),
-                                                              std::make_index_sequence<TC_GROUP_WIDTH>{})
+        ((array_set<GET_TCGRP_STRING_START(Is),StrSize>(tcstring,
+                                                        CALL_TCGRP_STRING_MAPPING(Is, this->_values[GET_TCGRP_SCALAR_START(Is)], grp_string),
+                                                        std::make_index_sequence<TC_GROUP_WIDTH>{})
         ), ... );
     }
 
@@ -951,7 +950,7 @@ private:
 
 private:
     fps_scalar_t _fps = fps_t::default_value();
-    flags_t _flags = {};
+    flags_t _flags = TCFLAGS_DEFAULT;
     scalar_t _values[TC_TOTAL_GROUPS] = {};
 };
 
@@ -962,7 +961,8 @@ private:
 #undef TC_FLAGS_SIZE
 
 #undef TCSTRING_GROUP_DEFAULT
-#undef TCSTRING_SIZE
+#undef TCSTRING_SIZE_STANDARD
+#undef TCSTRING_SIZE_WITH_SUBFRAMES
 #undef TCSTRING_COLON_DEFAULT
 #undef TCSTRING_COLON_DROPFRAME
 #undef TCSTRING_COLON_SUBFRAMES
@@ -1017,6 +1017,15 @@ private:
 #undef TCSCALAR_1HR_IN_SUBFRAMES
 #undef TCSCALAR_1MIN_IN_SUBFRAMES
 #undef TCSCALAR_1SEC_IN_SUBFRAMES
+
+#undef TCFLAGS_DEFAULT
+#undef TCFLAGS_FALSE
+#undef TCFLAGS_MASK_TCSTRING_FORMAT_INDEX
+#undef TCFLAGS_MASK_TCSTRING_DROPFRAME_INDEX
+#undef TCFLAGS_MASK_TCSTRING_FORMAT
+#undef TCFLAGS_MASK_TCSTRING_DROPFRAME
+#undef TCFLAGS_SHOW_WITH_SUBFRAMES
+#undef TCFLAGS_IS_DROPFRAME
 
 #undef UNWRAP_TCVALUES
 #undef TCVALUES_DEFAULT_INITIALIZER
