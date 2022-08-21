@@ -27,7 +27,10 @@
             "architecture": "x64",
             "generator": "Visual Studio 17 2022",
             "toolset": "host=x64",
-            "binaryDir": "${sourceDir}/build/default-dbg"
+            "binaryDir": "${sourceDir}/build/default-dbg",
+            "cacheVariables": {
+                "ENABLE_STATIC_TESTS": "on"
+            }
         },
         {
             "name": "release",
