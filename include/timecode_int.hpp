@@ -13,14 +13,15 @@
 #include <cassert>
 #include <compare>
 #include <cstring>
+#include <cstdlib>
 #include <cctype>
+#include <cmath>
 #include <bitset>
 #include <concepts>
 #include <cstdint>
 #include <cstring>
-#include <initializer_list>
+#include <iostream>
 #include <limits>
-#include <stdlib.h>
 #include <string_view>
 #include <type_traits>
 #include <utility>
@@ -94,9 +95,11 @@ namespace vtm::chrono::internal {
 #define TCFLAGS_FALSE 0
 #define TCFLAGS_MASK_TCSTRING_FORMAT_INDEX 0
 #define TCFLAGS_MASK_TCSTRING_DROPFRAME_INDEX 1
+#define TCFLAGS_MASK_ERROR_INDEX 7
 #define TCFLAGS_MASK_ALL 0xffffffffffffffff
 #define TCFLAGS_MASK_TCSTRING_FORMAT (0x01 << TCFLAGS_MASK_TCSTRING_FORMAT_INDEX)
 #define TCFLAGS_MASK_TCSTRING_DROPFRAME (0x01 << TCFLAGS_MASK_TCSTRING_DROPFRAME_INDEX)
+#define TCFLAGS_MASK_ERROR (0x01 << TCFLAGS_MASK_ERROR_INDEX)
 #define TCFLAGS_SHOW_WITH_SUBFRAMES TCFLAGS_MASK_TCSTRING_FORMAT
 #define TCFLAGS_IS_DROPFRAME TCFLAGS_MASK_TCSTRING_DROPFRAME
 
@@ -137,7 +140,7 @@ namespace vtm::chrono::internal {
         '0', '0', TCSTRING_COLON_DEFAULT,   \
         '0', '0', TCSTRING_COLON_DEFAULT,   \
         '0', '0', TCSTRING_COLON_SUBFRAMES, \
-        '0', '0'                            \
+        '0', '0', 0                         \
     }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -194,7 +197,7 @@ template<std::integral TInt,
          vtm::traits::StringLike TString,
          vtm::traits::StringLike TView,
          FpsFormatFactory TFps>
-class __BasicTimecodeInt : public vtm::traits::__implicit_string_overloads_crtp<__TEMPLATE_TYPE, TString, TView>
+class __BasicTimecodeInt : public vtm::traits::__implicit_string_overload_crtp<__TEMPLATE_TYPE, TString>
                          , public vtm::traits::__convert_to_signed<__TEMPLATE_TYPE, vtm::traits::to_signed_t<TInt>>
                          , public vtm::traits::__convert_to_unsigned<__TEMPLATE_TYPE, vtm::traits::to_unsigned_t<TInt>>
                          , public vtm::traits::__convert_to_float<__TEMPLATE_TYPE, TFloat>
@@ -211,19 +214,19 @@ class __BasicTimecodeInt : public vtm::traits::__implicit_string_overloads_crtp<
 ///////////////////////////////////////////////////////////////////////////
 
 public:
-    using __my_type       = __TEMPLATE_TYPE;
-    using string_t        = typename vtm::traits::__implicit_string_overloads<TString, TView>::string_type;
-    using string_view_t   = typename vtm::traits::__implicit_string_overloads<TString, TView>::string_view_type;
-    using signed_type     = typename vtm::traits::__convert_to_signed<__my_type, vtm::traits::to_signed_t<TInt>>::signed_type;
-    using unsigned_type   = typename vtm::traits::__convert_to_unsigned<__my_type, vtm::traits::to_unsigned_t<TInt>>::unsigned_type;
-    using float_type      = typename vtm::traits::__convert_to_float<__my_type, TFloat>::float_type;
-    using string_type     = typename vtm::traits::__convert_to_string<__my_type, string_t>::string_type;
-    using char_t          = vtm::traits::string_char_type_t<string_t>;
-    using display_t       = string_view_t;
-    using fps_t           = TFps;
-    using fps_scalar_t    = typename TFps::type;
-    using flags_t         = std::uint8_t;
-    using scalar_t        = std::uint8_t;
+    using __my_type        = __TEMPLATE_TYPE;
+    using string_t         = typename vtm::traits::__implicit_string_overload_crtp<__TEMPLATE_TYPE, TString>::string_type;
+    using string_view_t    = std::remove_cvref_t<TView>;
+    using signed_type      = typename vtm::traits::__convert_to_signed<__my_type, vtm::traits::to_signed_t<TInt>>::signed_type;
+    using unsigned_type    = typename vtm::traits::__convert_to_unsigned<__my_type, vtm::traits::to_unsigned_t<TInt>>::unsigned_type;
+    using float_type       = typename vtm::traits::__convert_to_float<__my_type, TFloat>::float_type;
+    using string_type      = typename vtm::traits::__convert_to_string<__my_type, string_t>::string_type;
+    using char_t           = vtm::traits::string_char_type_t<string_t>;
+    using display_t        = string_view_t;
+    using fps_t            = TFps;
+    using fps_scalar_t     = typename TFps::type;
+    using flags_t          = std::uint8_t;
+    using scalar_t         = std::uint8_t;
 
 ///////////////////////////////////////////////////////////////////////////
 
@@ -269,17 +272,23 @@ private:
 
 ///////////////////////////////////////////////////////////////////////////
 //
-// @SECTION String Representation Types
+//  -- @SECTION Standard Library Support --
 //
 ///////////////////////////////////////////////////////////////////////////
 
-private:
-    enum class __TCStringType : unsigned_type
-    {
-        smpte_standard,
-        smpte_subframes,
-        none
-    };
+friend std::ostream& operator<<(std::ostream& out, const __my_type& tc)
+{
+    char_t out_str[TCSTRING_SIZE_WITH_SUBFRAMES + 1] = TCSTRING_DEFAULT_INITIALIZER;
+
+    if (tc.is_flag_unset<TCFLAGS_SHOW_WITH_SUBFRAMES>())
+        out_str[TCSTRING_SIZE_STANDARD] = '\0';
+
+    tc.fill_tcstring_array(out_str, std::make_index_sequence<TC_TOTAL_GROUPS>{});
+
+    out << out_str;
+
+    return out;
+}
 
 ///////////////////////////////////////////////////////////////////////////
 
@@ -332,8 +341,8 @@ public:
     }
 
     template<std::integral T>
-    explicit constexpr __BasicTimecodeInt(const T ticks,
-                                          const fps_scalar_t fps = fps_t::default_value()) noexcept
+    constexpr __BasicTimecodeInt(const T ticks,
+                                 const fps_scalar_t fps = fps_t::default_value()) noexcept
         : _fps(fps)
         , _flags(TCFLAGS_DEFAULT)
         , _values{}
@@ -342,15 +351,55 @@ public:
                              std::make_index_sequence<TC_TOTAL_GROUPS>{});
     }
 
-    explicit constexpr __BasicTimecodeInt(const string_view_t tc,
-                                          const fps_scalar_t fps = fps_t::default_value())
+    template<typename TChar>
+        requires std::is_same_v<TChar*, char_t*>
+             || std::is_same_v<TChar*, const char_t*>
+    constexpr __BasicTimecodeInt(TChar* tc,
+                                 const fps_scalar_t fps = fps_t::default_value())
         : _fps(fps)
         , _flags(TCFLAGS_DEFAULT)
         , _values{}
     {
         // validate tc_string
         // TODO: Better default behaviour for invalid tc strings
-        assert(this->is_valid_tcstring(tc) && "size of timecode string must be exactly the same as TCSTRING_SIZE_WITH_SUBFRAMES");
+        assert(this->is_valid_tc_string(tc) && "timecode passed to constructor has an invalid format");
+
+        // transfer tc_string data
+        scalar_t current = 0;
+        std::size_t group_index = 0;
+        std::size_t values_index = 0;
+        std::size_t decimal_pos = TC_GROUP_WIDTH - 1;
+
+        char_t c = *tc;
+#pragma warning(push, 1)
+        for (std::ptrdiff_t i = 1; c != '\0'; ++i) {
+            if (group_index++ < TC_GROUP_WIDTH) {
+                current += (c - TCSTRING_CHAR_OFFSET) * (std::pow(10, decimal_pos--)); // TODO: Roll your own integral pow function to avoid conversion
+            }
+
+            else {
+                this->_values[values_index++] = current;
+                current = 0;
+                group_index = 0;
+                decimal_pos = TC_GROUP_WIDTH - 1;
+            }
+
+            c = *(tc + i);
+        }
+#pragma warning(pop)
+
+        this->_values[values_index] = current;
+    }
+
+    constexpr __BasicTimecodeInt(string_view_t tc,
+                                 const fps_scalar_t fps = fps_t::default_value())
+        : _fps(fps)
+        , _flags(TCFLAGS_DEFAULT)
+        , _values{}
+    {
+        // validate tc_string
+        // TODO: Better default behaviour for invalid tc strings
+        assert(this->is_valid_tc_string(tc) && "timecode passed to string constructor has an invalid format");
 
         // transfer tc_string data
         scalar_t current = 0;
@@ -363,7 +412,6 @@ public:
             if (group_index++ < TC_GROUP_WIDTH) {
                 current += (c - TCSTRING_CHAR_OFFSET) * (std::pow(10, decimal_pos--)); // TODO: Roll your own integral pow function to avoid conversion
             }
-#pragma warning(pop)
 
             else {
                 this->_values[values_index++] = current;
@@ -372,36 +420,87 @@ public:
                 decimal_pos = TC_GROUP_WIDTH - 1;
             }
         }
+#pragma warning(pop)
 
         this->_values[values_index] = current;
     }
 
 private:
-    inline bool is_valid_tcstring(const string_view_t tc)
+    inline bool is_valid_tc_string(char_t* tc)
     {
-        if (tc.length() != TCSTRING_SIZE_WITH_SUBFRAMES
-            && tc.length() != TCSTRING_SIZE_STANDARD)
+        std::size_t tc_length = std::strlen(tc);
+        if (tc_length != TCSTRING_SIZE_WITH_SUBFRAMES
+            && tc_length != TCSTRING_SIZE_STANDARD)
         {
             return false;
         }
 
-        std::size_t group_index = 0;
-        for (auto c : tc) {
-            if (group_index++ < TC_GROUP_WIDTH) {
-                // TODO: validate that digits respect max/min bounds
-                if (!std::isdigit(c)) return false;
-            }
+        char_t c = 'E';
+        for (std::ptrdiff_t i = 0; i < tc_length; i += TC_GROUP_WIDTH + 1) {
+            for (std::size_t group_index = 0; group_index <= TC_GROUP_WIDTH; ++group_index) {
+                if (c == '\0') break;
+                c = *(tc + i + group_index);
 
-            else if (group_index == TC_GROUP_WIDTH) {
-                if (group_index == TC_TOTAL_GROUPS - 1) {
-                    if (c != TCSTRING_COLON_SUBFRAMES)
-                        return false;
+                if (group_index < TC_GROUP_WIDTH) {
+                    // TODO: validate that digits respect max/min bounds
+                    if (!std::isdigit(c)) return false;
                 }
 
-                else if (c != TCSTRING_COLON_DEFAULT || c != TCSTRING_COLON_DROPFRAME)
-                    return false;
+                else if (group_index == TC_GROUP_WIDTH) {
+                    if (i + group_index == TCSTRING_SUBFRAMES_START - 1) {
+                        if (c != TCSTRING_COLON_SUBFRAMES)
+                            return false;
+                    }
 
-                group_index = 0;
+                    else if (i + group_index == TCSTRING_FRAMES_START - 1) {
+                        if (c != TCSTRING_COLON_DEFAULT && c != TCSTRING_COLON_DROPFRAME)
+                            return false;
+                    }
+
+                    else if (c != TCSTRING_COLON_DEFAULT) return false;
+                }
+
+            }
+        }
+
+        return true;
+    }
+
+    inline bool is_valid_tc_string(const string_view_t tc)
+    {
+        const auto tc_length = tc.length();
+        if (tc_length != TCSTRING_SIZE_WITH_SUBFRAMES
+            && tc_length != TCSTRING_SIZE_STANDARD)
+        {
+            return false;
+        }
+
+        char_t c = 'E';
+        std::size_t group_index = 0;
+        for (std::ptrdiff_t i = 0; i < tc_length; i += TC_GROUP_WIDTH + 1) {
+            for (std::size_t group_index = 0; group_index <= TC_GROUP_WIDTH; ++group_index) {
+                if (i + group_index == tc_length) break;
+                c = tc[i + group_index];
+
+                if (group_index < TC_GROUP_WIDTH) {
+                    // TODO: validate that digits respect max/min bounds
+                    if (!std::isdigit(c)) return false;
+                }
+
+                else if (group_index == TC_GROUP_WIDTH) {
+                    if (i + group_index == TCSTRING_SUBFRAMES_START - 1) {
+                        if (c != TCSTRING_COLON_SUBFRAMES)
+                            return false;
+                    }
+
+                    else if (i + group_index == TCSTRING_FRAMES_START - 1) {
+                        if (c != TCSTRING_COLON_DEFAULT && c != TCSTRING_COLON_DROPFRAME)
+                            return false;
+                    }
+
+                    else if (c != TCSTRING_COLON_DEFAULT) return false;
+                }
+
             }
         }
 
@@ -421,12 +520,6 @@ public:
     auto display() const -> display_t
     {
         VTM_TODO("not implemented");
-    }
-
-    // TODO: Test that this doesn't stack overflow because of implicit type conversion
-    explicit operator string_view_t() const
-    {
-        return string_type(*this);
     }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -456,7 +549,7 @@ public:
 
     operator string_type() const
     {
-        char_t tc_string[TCSTRING_SIZE_WITH_SUBFRAMES] = TCSTRING_DEFAULT_INITIALIZER;
+        char_t tc_string[TCSTRING_SIZE_WITH_SUBFRAMES + 1] = TCSTRING_DEFAULT_INITIALIZER;
         this->fill_tcstring_array(tc_string, std::make_index_sequence<TC_TOTAL_GROUPS>{});
 
         std::size_t string_size = (this->is_flag_set<TCFLAGS_SHOW_WITH_SUBFRAMES>())
@@ -477,7 +570,8 @@ private:
     constexpr auto implicit_number_conversion_impl(std::index_sequence<Is...> seq) const noexcept -> T
     {
         static_assert(sizeof...(Is) == TC_TOTAL_GROUPS,
-                      "index sequence of local input variable \"seq\" has more indexes than this->_values container, which will result in buffer overflow");
+                      "index sequence of local input variable \"seq\" has more indexes "
+                      "than this->_values container, which will result in buffer overflow");
 
         const auto fps_factor = fps_t::to_unsigned(this->_fps);
         return (
@@ -538,8 +632,8 @@ public:
     template<std::integral V>
     void set_ticks(const V ticks)
     {
-        assert(ticks >= 0 && "cannot set ticks to value less than 0");
-        this->set_ticks_impl(ticks, std::make_index_sequence<TC_TOTAL_GROUPS>{});
+        const unsigned_type abs_ticks = std::abs(ticks);
+        this->set_ticks_impl(abs_ticks, std::make_index_sequence<TC_TOTAL_GROUPS>{});
     }
 
 private:
@@ -563,18 +657,18 @@ private:
 
             else if (ticks == 0) this->_values[i] = ticks;
         }
-
-        // TODO: handle remainder of ticks > 0
     }
 
 public:
     void set_fps(const fps_scalar_t fps) noexcept
     {
+        // TODO: type safety for this
         this->_fps = fps;
     }
 
     fps_scalar_t fps() const noexcept
     {
+        // TODO: wrap this in an enum class
         return this->_fps;
     }
 
@@ -661,9 +755,6 @@ public:
     template<std::integral T>
     constexpr void operator=(T&& ticks)
     {
-        assert(TCSCALAR_LOWERBOUND() <= ticks && ticks < TCSCALAR_UPPERBOUND(T)
-               && "value of ticks in integral assignment operator conversion is out of bounds");
-
         *this = __my_type{std::forward<T>(ticks)};
     }
 
@@ -892,6 +983,17 @@ public:
         return tmp;
     }
 
+    __my_type& operator--() {
+        this->set_ticks(this->ticks() - 1);
+        return *this;
+    }
+
+    __my_type operator--(int) {
+        auto tmp = *this;
+        this->set_ticks(this->ticks() - 1);
+        return tmp;
+    }
+
 ///////////////////////////////////////////////////////////////////////////
 
 
@@ -902,7 +1004,7 @@ public:
 ///////////////////////////////////////////////////////////////////////////
 
 public:
-    inline void enable_extended_string(bool enable)
+    inline __my_type& enable_extended_string(bool enable = true)
     {
         if (enable) {
             this->set_flag<TCFLAGS_SHOW_WITH_SUBFRAMES>();
@@ -911,6 +1013,8 @@ public:
         else {
             this->unset_flag<TCFLAGS_SHOW_WITH_SUBFRAMES>();
         }
+
+        return *this;
     }
 
 private:
@@ -957,8 +1061,6 @@ private:
         static_assert(Index < TC_TOTAL_GROUPS, "index for static data member tick_groups must be less than TC_TOTAL_GROUPS");
         const unsigned_type tick_factor = CALL_TCGRP_SCALAR_VALUE_MAPPING(Index,
                                                                           fps_t::to_unsigned(this->_fps));
-
-        assert(tick_factor > 0 && "tick_factor evaluated to 0, which could result in unexpected results with multiplication by zero");
 
         return value * tick_factor;
     }
@@ -1066,8 +1168,10 @@ private:
 #undef TCFLAGS_MASK_ALL
 #undef TCFLAGS_MASK_TCSTRING_FORMAT_INDEX
 #undef TCFLAGS_MASK_TCSTRING_DROPFRAME_INDEX
+#undef TCFLAGS_MASK_ERROR_INDEX
 #undef TCFLAGS_MASK_TCSTRING_FORMAT
 #undef TCFLAGS_MASK_TCSTRING_DROPFRAME
+#undef TCFLAGS_MASK_ERROR
 #undef TCFLAGS_SHOW_WITH_SUBFRAMES
 #undef TCFLAGS_IS_DROPFRAME
 
