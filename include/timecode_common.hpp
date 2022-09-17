@@ -104,12 +104,20 @@
 namespace vtm::chrono {
 
 using float32_t = float;
-using float64_t = long double;
+
+#if defined(_WIN32) || defined(__CYGWIN__)
+    using float64_t = long double;
+#else
+    using float64_t = double;
+#endif
+
 using int32_t = int;
 using int64_t = long long;
 using uint32_t = unsigned int;
 using uint64_t = unsigned long long;
 using usize_t = std::size_t;
+
+#ifdef ENABLE_STATIC_TESTS
 
 static_assert(std::is_floating_point_v<float32_t> && sizeof(float32_t) == 4, "vtm::chrono::float32_t is not 4-bytes");
 static_assert(std::is_floating_point_v<float64_t> && sizeof(float64_t) == 8, "vtm::chrono::float64_t is not 8-bytes");
@@ -118,6 +126,8 @@ static_assert(std::is_signed_v<int64_t> && sizeof(int64_t) == 8, "vtm::chrono::i
 static_assert(std::is_unsigned_v<uint32_t> && sizeof(uint32_t) == 4, "vtm::chrono::uint32_t is not 4-bytes");
 static_assert(std::is_unsigned_v<uint64_t> && sizeof(uint64_t) == 8, "vtm::chrono::uint64_t is not 8-bytes");
 static_assert(std::is_unsigned_v<usize_t>, "vtm::chrono::usize_t is not unsigned");
+
+#endif // @END OF ENABLE_STATIC_TESTS
 
 } // @END OF namespace chrono
 

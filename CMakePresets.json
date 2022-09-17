@@ -12,8 +12,7 @@
             "cacheVariables": {
                 "BUILD_CONFIG": "debug",
                 "WARNING_CONFIG": "normal",
-                "CMAKE_EXPORT_COMPILE_COMMANDS": "on",
-                "VCPKG_TARGET_TRIPLET": "x64-windows-static",
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "off",
                 "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
                 "CMAKE_BUILD_TYPE": "Debug",
                 "CMAKE_INSTALL_PREFIX": "${sourceDir}/build/install/${presetName}"
@@ -23,10 +22,8 @@
             "name": "debug",
             "displayName": "Default Debug Config",
             "description": "Default debug build configuration",
+            "generator": "Ninja",
             "inherits": "common",
-            "architecture": "x64",
-            "generator": "Visual Studio 17 2022",
-            "toolset": "host=x64",
             "binaryDir": "${sourceDir}/build/default-dbg",
             "cacheVariables": {
                 "ENABLE_STATIC_TESTS": "on"
@@ -36,9 +33,8 @@
             "name": "release",
             "displayName": "Default Release Config",
             "description": "Default release build configuration",
+            "generator": "Ninja",
             "inherits": "common",
-            "architecture": "x64",
-            "toolset": "host=x64",
             "binaryDir": "${sourceDir}/build/default-rel"
         },
         {
@@ -55,7 +51,6 @@
             "name": "debug",
             "displayName": "Default Debug Build",
             "configuration": "Debug",
-            "targets": ["ALL_BUILD"],
             "inheritConfigureEnvironment": true,
             "configurePreset": "debug",
             "jobs": 14
@@ -64,7 +59,6 @@
             "name": "release",
             "displayName": "Default Release Build",
             "configuration": "Release",
-            "targets": ["ALL_BUILD"],
             "inheritConfigureEnvironment": true,
             "configurePreset": "release",
             "jobs": 14

@@ -13,10 +13,10 @@ endif()
 
 # Global compiler configuration
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-if (APPLE)
-    set(CMAKE_CXX_STANDARD 20)
-else()
+if (MSVC)
     set(CMAKE_CXX_STANDARD 23)
+else()
+    set(CMAKE_CXX_STANDARD 20)
 endif()
 
 # MSVC compiler parameters
@@ -43,8 +43,7 @@ if (MSVC)
 
 # Unix compiler parameters
 else()
-    set(COMPILE_WARNINGS "-Wall -Wpedantic")
-    add_compile_options(${LINK_RUNTIME_LIB} ${COMPILE_WARNINGS})
+    add_compile_options("-Wall" "-Wpedantic")
 endif()
 
 # Build Third-Party Dependencies via vcpkg

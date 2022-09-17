@@ -1,5 +1,5 @@
 #define CATCH_CONFIG_MAIN
-#include <Catch2/catch_all.hpp>
+#include <catch2/catch_all.hpp>
 #include "edlfile.hpp"
 
 TEST_CASE("EDL initialization from file path", "[edl][parsing][initialization][io]")

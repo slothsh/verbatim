@@ -1,8 +1,5 @@
 #define CATCH_CONFIG_MAIN
-#include <Catch2/catch_all.hpp>
-#include "catch2/benchmark/catch_benchmark.hpp"
-#include "catch2/catch_message.hpp"
-#include "catch2/catch_test_macros.hpp"
+#include <catch2/catch_all.hpp>
 #include "timecode.hpp"
 #include <string>
 #include <string_view>
@@ -28,10 +25,16 @@ consteval int to_nearest_padding(int size, int alignment)
 
 consteval int size_of_vtmtimecode()
 {
+#if defined(_WIN32)
     constexpr int size = (sizeof(vtm::timecode::scalar_t) * 5) +
                           sizeof(vtm::timecode::fps_scalar_t) +
                           sizeof(vtm::timecode::flags_t) +
                           sizeof(void*);
+#elif defined(__linux__) || defined(__gnu_linux__)
+    constexpr int size = (sizeof(vtm::timecode::scalar_t) * 5) +
+                          sizeof(vtm::timecode::fps_scalar_t) +
+                          sizeof(vtm::timecode::flags_t);
+#endif
 
     constexpr int padding = to_nearest_padding(size, alignof(vtm::timecode));
 

@@ -16,7 +16,6 @@
 #include <cstdlib>
 #include <cctype>
 #include <cmath>
-#include <bitset>
 #include <concepts>
 #include <cstdint>
 #include <cstring>
@@ -27,12 +26,10 @@
 #include <utility>
 
 // Library headers
-#include "catch2/internal/catch_section.hpp"
 #include "errors.hpp"
 #include "timecode_common.hpp"
 #include "traits.hpp"
 #include "utility.hpp"
-#include <fmt/core.h>
 
 ///////////////////////////////////////////////////////////////////////////
 
@@ -353,7 +350,7 @@ public:
 
     template<typename TChar>
         requires std::is_same_v<TChar*, char_t*>
-             || std::is_same_v<TChar*, const char_t*>
+              || std::is_same_v<TChar*, const char_t*>
     constexpr __BasicTimecodeInt(TChar* tc,
                                  const fps_scalar_t fps = fps_t::default_value())
         : _fps(fps)
@@ -632,7 +629,8 @@ public:
     template<std::integral V>
     void set_ticks(const V ticks)
     {
-        const unsigned_type abs_ticks = std::abs(ticks);
+        const vtm::traits::to_signed_t<V> _ticks = ticks;
+        const auto abs_ticks = std::abs(_ticks);
         this->set_ticks_impl(abs_ticks, std::make_index_sequence<TC_TOTAL_GROUPS>{});
     }
 

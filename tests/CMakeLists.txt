@@ -10,7 +10,7 @@ endif()
 
 # Library tests
 add_executable(timecode_example.test timecode_example.test.cpp)
-add_executable(edlfile.test edlfile.test.cpp)
+# add_executable(edlfile.test edlfile.test.cpp)
 add_executable(timecode_int.test timecode_int.test.cpp)
 add_executable(timecode_int.bench timecode_int.bench.cpp)
 add_executable(timecode_float.test timecode_float.test.cpp)
@@ -18,7 +18,7 @@ add_executable(fps.test fps.test.cpp)
 add_executable(functional.test functional.test.cpp)
 
 target_link_libraries(timecode_example.test PRIVATE fmt::fmt magic_enum::magic_enum)
-target_link_libraries(edlfile.test PRIVATE Catch2::Catch2WithMain fmt::fmt magic_enum::magic_enum)
+# target_link_libraries(edlfile.test PRIVATE Catch2::Catch2WithMain fmt::fmt magic_enum::magic_enum)
 target_link_libraries(timecode_int.test PRIVATE Catch2::Catch2WithMain fmt::fmt magic_enum::magic_enum)
 target_link_libraries(timecode_int.bench PRIVATE Catch2::Catch2WithMain fmt::fmt magic_enum::magic_enum)
 target_link_libraries(timecode_float.test PRIVATE Catch2::Catch2WithMain fmt::fmt magic_enum::magic_enum)
@@ -27,7 +27,7 @@ target_link_libraries(functional.test PRIVATE Catch2::Catch2WithMain fmt::fmt ma
 
 include(CTest)
 include(Catch)
-catch_discover_tests(edlfile.test)
+# catch_discover_tests(edlfile.test)
 catch_discover_tests(timecode_int.test)
 catch_discover_tests(timecode_int.bench)
 catch_discover_tests(timecode_float.test)
