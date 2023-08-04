@@ -11,6 +11,7 @@
 #include "timecode_common.hpp"
 #include "timecode_int.hpp"
 #include "timecode_float.hpp"
+#include <type_traits>
 
 ///////////////////////////////////////////////////////////////////////////
 
@@ -79,10 +80,24 @@ using fpsuint_t = typename chrono::fps::unsigned_type;
 ///////////////////////////////////////////////////////////////////////////
 
 namespace std {
-
-// @SECTION: __BasicTimecode std::tuple specialization
+// @SECTION: __BasicTimecodeInt std::tuplee specialization
 template<>
-struct tuple_size<vtm::f64timecode> : std::integral_constant<std::size_t, 2> {};
+struct tuple_size<vtm::timecode> : std::integral_constant<std::size_t, 6>{}; // TODO: constant for magic number
+
+template<std::size_t Index>
+struct tuple_element<Index, vtm::timecode>
+    : tuple_element<Index,
+                    tuple<typename vtm::timecode::__element1_type,
+                          typename vtm::timecode::__element2_type,
+                          typename vtm::timecode::__element3_type,
+                          typename vtm::timecode::__element4_type,
+                          typename vtm::timecode::__element5_type,
+                          typename vtm::timecode::__element6_type >>
+{};
+
+// @SECTION: __BasicTimecodeFloat std::tuple specialization
+template<>
+struct tuple_size<vtm::f64timecode> : std::integral_constant<std::size_t, 2>{}; // TODO: constant for magic number
 
 template<std::size_t Index>
 struct tuple_element<Index, vtm::f64timecode>

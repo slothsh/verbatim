@@ -186,6 +186,19 @@ inline constexpr bool identical_v = identical<Ts...>::value;
 template<typename... Ts>
 using identical_t = typename identical<Ts...>::type;
 
+template<typename...>
+struct unidentical : std::false_type {};
+
+template<typename T, typename... Rest>
+struct unidentical<T, Rest...> : std::bool_constant<((!std::is_same_v<T, Rest>) && ...)>
+{};
+
+template<typename... Ts>
+using unidentical_t = typename unidentical<Ts...>::type;
+
+template<typename... Ts>
+inline constexpr bool unidentical_v = unidentical<Ts...>::value;
+
 template<auto... Args>
 struct arg_size
 {

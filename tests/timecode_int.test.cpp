@@ -11,6 +11,7 @@
 ///////////////////////////////////////////////////////////////////////////
 
 #ifdef ENABLE_STATIC_TESTS
+#define TOTAL_SCALAR_GROUPS 5
 
 // static helpers
 consteval int to_nearest_padding(int size, int alignment)
@@ -26,12 +27,12 @@ consteval int to_nearest_padding(int size, int alignment)
 consteval int size_of_vtmtimecode()
 {
 #if defined(_WIN32)
-    constexpr int size = (sizeof(vtm::timecode::scalar_t) * 5) +
+    constexpr int size = (sizeof(vtm::timecode::scalar_t) * TOTAL_SCALAR_GROUPS) +
                           sizeof(vtm::timecode::fps_scalar_t) +
                           sizeof(vtm::timecode::flags_t) +
                           sizeof(void*);
 #elif defined(__linux__) || defined(__gnu_linux__)
-    constexpr int size = (sizeof(vtm::timecode::scalar_t) * 5) +
+    constexpr int size = (sizeof(vtm::timecode::scalar_t) * TOTAL_SCALAR_GROUPS) +
                           sizeof(vtm::timecode::fps_scalar_t) +
                           sizeof(vtm::timecode::flags_t);
 #endif
@@ -44,6 +45,7 @@ consteval int size_of_vtmtimecode()
 // conditions for static tests
 static_assert(sizeof(vtm::timecode) == size_of_vtmtimecode(), "size of vtm::timecode object does not meet established size requirements");
 
+#undef TOTAL_SCALAR_GROUPS
 #endif // @END OF ENABLE_STATIC_TESTS
 
 ///////////////////////////////////////////////////////////////////////////

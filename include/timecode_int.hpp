@@ -99,6 +99,7 @@ namespace vtm::chrono::internal {
 #define TCFLAGS_MASK_ERROR (0x01 << TCFLAGS_MASK_ERROR_INDEX)
 #define TCFLAGS_SHOW_WITH_SUBFRAMES TCFLAGS_MASK_TCSTRING_FORMAT
 #define TCFLAGS_IS_DROPFRAME TCFLAGS_MASK_TCSTRING_DROPFRAME
+#define TCFLAGS_ERROR TCFLAGS_MASK_ERROR
 
 #define __TCGRP_SCALAR_START 0
 #define __TCGRP_SCALAR_MIN 1
@@ -139,6 +140,24 @@ namespace vtm::chrono::internal {
         '0', '0', TCSTRING_COLON_SUBFRAMES, \
         '0', '0', 0                         \
     }
+
+///////////////////////////////////////////////////////////////////////////
+//
+//  -- @SECTION __BasicTimecodeInt Disambuigation Types --
+//
+///////////////////////////////////////////////////////////////////////////
+
+namespace tags {
+struct hours {};
+struct minutes {};
+struct seconds {};
+struct frames {};
+struct sub_frames {};
+struct fps {};
+} // @END of namespace vtm::chrono::internal::tags
+
+///////////////////////////////////////////////////////////////////////////
+
 
 ///////////////////////////////////////////////////////////////////////////
 //
@@ -224,6 +243,14 @@ public:
     using fps_scalar_t     = typename TFps::type;
     using flags_t          = std::uint8_t;
     using scalar_t         = std::uint8_t;
+
+    // internal tuple aliases
+    using __element1_type = unsigned_type;
+    using __element2_type = unsigned_type;
+    using __element3_type = unsigned_type;
+    using __element4_type = unsigned_type;
+    using __element5_type = unsigned_type;
+    using __element6_type = fps_scalar_t;
 
 ///////////////////////////////////////////////////////////////////////////
 
@@ -368,7 +395,6 @@ public:
         std::size_t decimal_pos = TC_GROUP_WIDTH - 1;
 
         char_t c = *tc;
-#pragma warning(push, 1)
         for (std::ptrdiff_t i = 1; c != '\0'; ++i) {
             if (group_index++ < TC_GROUP_WIDTH) {
                 current += (c - TCSTRING_CHAR_OFFSET) * (std::pow(10, decimal_pos--)); // TODO: Roll your own integral pow function to avoid conversion
@@ -383,7 +409,6 @@ public:
 
             c = *(tc + i);
         }
-#pragma warning(pop)
 
         this->_values[values_index] = current;
     }
@@ -404,7 +429,6 @@ public:
         std::size_t values_index = 0;
         std::size_t decimal_pos = TC_GROUP_WIDTH - 1;
 
-#pragma warning(push, 1)
         for (auto c : tc) {
             if (group_index++ < TC_GROUP_WIDTH) {
                 current += (c - TCSTRING_CHAR_OFFSET) * (std::pow(10, decimal_pos--)); // TODO: Roll your own integral pow function to avoid conversion
@@ -417,52 +441,11 @@ public:
                 decimal_pos = TC_GROUP_WIDTH - 1;
             }
         }
-#pragma warning(pop)
 
         this->_values[values_index] = current;
     }
 
 private:
-    inline bool is_valid_tc_string(char_t* tc)
-    {
-        std::size_t tc_length = std::strlen(tc);
-        if (tc_length != TCSTRING_SIZE_WITH_SUBFRAMES
-            && tc_length != TCSTRING_SIZE_STANDARD)
-        {
-            return false;
-        }
-
-        char_t c = 'E';
-        for (std::ptrdiff_t i = 0; i < tc_length; i += TC_GROUP_WIDTH + 1) {
-            for (std::size_t group_index = 0; group_index <= TC_GROUP_WIDTH; ++group_index) {
-                if (c == '\0') break;
-                c = *(tc + i + group_index);
-
-                if (group_index < TC_GROUP_WIDTH) {
-                    // TODO: validate that digits respect max/min bounds
-                    if (!std::isdigit(c)) return false;
-                }
-
-                else if (group_index == TC_GROUP_WIDTH) {
-                    if (i + group_index == TCSTRING_SUBFRAMES_START - 1) {
-                        if (c != TCSTRING_COLON_SUBFRAMES)
-                            return false;
-                    }
-
-                    else if (i + group_index == TCSTRING_FRAMES_START - 1) {
-                        if (c != TCSTRING_COLON_DEFAULT && c != TCSTRING_COLON_DROPFRAME)
-                            return false;
-                    }
-
-                    else if (c != TCSTRING_COLON_DEFAULT) return false;
-                }
-
-            }
-        }
-
-        return true;
-    }
-
     inline bool is_valid_tc_string(const string_view_t tc)
     {
         const auto tc_length = tc.length();
@@ -473,7 +456,6 @@ private:
         }
 
         char_t c = 'E';
-        std::size_t group_index = 0;
         for (std::ptrdiff_t i = 0; i < tc_length; i += TC_GROUP_WIDTH + 1) {
             for (std::size_t group_index = 0; group_index <= TC_GROUP_WIDTH; ++group_index) {
                 if (i + group_index == tc_length) break;
@@ -629,9 +611,20 @@ public:
     template<std::integral V>
     void set_ticks(const V ticks)
     {
-        const vtm::traits::to_signed_t<V> _ticks = ticks;
-        const auto abs_ticks = std::abs(_ticks);
-        this->set_ticks_impl(abs_ticks, std::make_index_sequence<TC_TOTAL_GROUPS>{});
+        if constexpr (std::is_unsigned_v<V>) {
+            this->set_ticks_impl(ticks, std::make_index_sequence<TC_TOTAL_GROUPS>{});
+        }
+
+        else if constexpr (std::is_signed_v<V>) {
+            // TODO: Is setting the value to 0 unexpected for the user?
+            unsigned_type _ticks = 0;
+            if (ticks >= 0) {
+                _ticks = ticks;
+                this->set_flag<TCFLAGS_ERROR>();
+            }
+
+            this->set_ticks_impl(_ticks, std::make_index_sequence<TC_TOTAL_GROUPS>{});
+        }
     }
 
 private:
@@ -1076,10 +1069,72 @@ private:
     constexpr void fill_tcstring_array(char_t(&tcstring)[StrSize], std::index_sequence<Is...> seq) const
     {
         char_t grp_string[TC_GROUP_WIDTH] = TCSTRING_GROUP_DEFAULT;
-        ((array_set<GET_TCGRP_STRING_START(Is),StrSize>(tcstring,
+        ((array_set<GET_TCGRP_STRING_START(Is), StrSize>(tcstring,
                                                         CALL_TCGRP_STRING_MAPPING(Is, this->_values[GET_TCGRP_SCALAR_START(Is)], grp_string),
                                                         std::make_index_sequence<TC_GROUP_WIDTH>{})
         ), ... );
+    }
+
+///////////////////////////////////////////////////////////////////////////
+
+
+///////////////////////////////////////////////////////////////////////////
+//
+//  -- @SECTION Structered Binding Builder --
+//
+///////////////////////////////////////////////////////////////////////////
+
+public:
+    template<typename... T>
+        requires (0 < sizeof...(T) && sizeof...(T) <= 6) // TODO: constant for magic number
+    auto bind_as()
+    {
+        return std::tuple{0};
+    }
+
+private:
+    template<typename T1, typename T2, typename... Rest>
+    auto choose_binding()
+    {
+        static_assert(vtm::traits::unidentical_v<T1, T2, Rest...>,
+                      "types for __BasicTimecodeInt binding must all be distinct tags");
+        // TODO: static assert that all types are tag types
+    }
+
+///////////////////////////////////////////////////////////////////////////
+
+
+///////////////////////////////////////////////////////////////////////////
+//
+// -- @SECTION Standard Library get() Overloads --
+//
+///////////////////////////////////////////////////////////////////////////
+
+public:
+    template<std::size_t Index>
+    auto&& get()        & { return this->get_helper<Index>(*this); }
+
+    template<std::size_t Index>
+    auto&& get()       && { return this->get_helper<Index>(*this); }
+
+    template<std::size_t Index>
+    auto&& get()  const & { return this->get_helper<Index>(*this); }
+
+    template<std::size_t Index>
+    auto&& get() const && { return this->get_helper<Index>(*this); }
+
+
+private:
+    template<std::size_t Index, typename T>
+    auto&& get_helper(T&& t) const
+    {
+        static_assert(Index < 6, "index out of bounds for __BasicTimecodeInt"); // TODO: constant for magic number
+        if constexpr (Index == 0) return std::forward<T>(t)._values[TCSCALAR_HRS_START];
+        if constexpr (Index == 1) return std::forward<T>(t)._values[TCSCALAR_MINS_START];
+        if constexpr (Index == 2) return std::forward<T>(t)._values[TCSCALAR_SECS_START];
+        if constexpr (Index == 3) return std::forward<T>(t)._values[TCSCALAR_FRAMES_START];
+        if constexpr (Index == 4) return std::forward<T>(t)._values[TCSCALAR_SUBFRAMES_START];
+        if constexpr (Index == 5) return std::forward<T>(t)._fps;
     }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -1094,7 +1149,7 @@ private:
 private:
     fps_scalar_t _fps = fps_t::default_value();
     flags_t _flags = TCFLAGS_DEFAULT;
-    scalar_t _values[TC_TOTAL_GROUPS] = {};
+    scalar_t _values[TC_TOTAL_GROUPS] = {0};
 };
 
 ///////////////////////////////////////////////////////////////////////////
@@ -1172,6 +1227,7 @@ private:
 #undef TCFLAGS_MASK_ERROR
 #undef TCFLAGS_SHOW_WITH_SUBFRAMES
 #undef TCFLAGS_IS_DROPFRAME
+#undef TCFLAGS_ERROR
 
 #undef UNWRAP_TCVALUES
 #undef TCVALUES_DEFAULT_INITIALIZER
